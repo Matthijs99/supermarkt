@@ -246,14 +246,27 @@
           threshold: 0.4,
           includeScore: true,
           minMatchCharLength: 2,
+          useExtendedSearch: true,
         }));
       }
       return fuseCache.get(supermarket.n);
     }
 
     function searchSupermarket(supermarket, query) {
-      const results = getFuse(supermarket).search(query, { limit: 1 });
-      return results.length > 0 ? results[0].item : null;
+      const results = getFuse(supermarket).search(query);
+      if (results.length === 0) return null;
+
+      let best = null, bestUnit = Infinity, bestPrice = Infinity;
+      for (const r of results) {
+        const size = parseSize(r.item.s);
+        const up   = calcUnitPrice(r.item.p, size);
+        if (up !== null) {
+          if (up.value < bestUnit) { bestUnit = up.value; best = r.item; }
+        } else if (best === null && r.item.p < bestPrice) {
+          bestPrice = r.item.p; best = r.item;
+        }
+      }
+      return best;
     }
 
     // --- Render ---
