@@ -26,33 +26,35 @@
         </svg>
         <input type="search" id="search" placeholder="Data wordt geladen…" disabled autocomplete="off">
       </div>
-      <div id="filter-wrap" style="display:none">
-        <div id="filter-row">
-          <div id="filter-pill">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
-                 stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
-                 stroke-linejoin="round" aria-hidden="true">
-              <line x1="4" y1="6" x2="20" y2="6"/>
-              <line x1="7" y1="12" x2="17" y2="12"/>
-              <line x1="10" y1="18" x2="14" y2="18"/>
-            </svg>
-            <input type="number" id="min-size" placeholder="min" min="0">
-            <span class="filter-sep">–</span>
-            <input type="number" id="max-size" placeholder="max" min="0">
-            <span id="filter-unit-label"></span>
-            <button id="filter-clear" aria-label="Wis filter" title="Wis filter">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+      <div id="filter-bar">
+        <div id="filter-wrap" style="display:none">
+          <div id="filter-row">
+            <div id="filter-pill">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
                    stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
                    stroke-linejoin="round" aria-hidden="true">
-                <line x1="18" y1="6" x2="6" y2="18"/>
-                <line x1="6" y1="6" x2="18" y2="18"/>
+                <line x1="4" y1="6" x2="20" y2="6"/>
+                <line x1="7" y1="12" x2="17" y2="12"/>
+                <line x1="10" y1="18" x2="14" y2="18"/>
               </svg>
-            </button>
+              <input type="number" id="min-size" placeholder="min" min="0">
+              <span class="filter-sep">–</span>
+              <input type="number" id="max-size" placeholder="max" min="0">
+              <span id="filter-unit-label"></span>
+              <button id="filter-clear" aria-label="Wis filter" title="Wis filter">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+                     stroke-linejoin="round" aria-hidden="true">
+                  <line x1="18" y1="6" x2="6" y2="18"/>
+                  <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+              </button>
+            </div>
           </div>
         </div>
+        <div id="unit-filter-wrap" style="display:none"></div>
+        <div id="sm-filter-wrap"></div>
       </div>
-      <div id="unit-filter-wrap" style="display:none"></div>
-      <div id="sm-filter-wrap"></div>
     </div>
     <div class="header-wave">
       <svg viewBox="0 0 1440 52" preserveAspectRatio="none" aria-hidden="true">

@@ -30,7 +30,7 @@ body {
 /* ── Header ─────────────────────────────────────── */
 header {
   background: linear-gradient(135deg, var(--blue-dark) 0%, var(--blue) 100%);
-  padding: 2.75rem 1.5rem 3.5rem;
+  padding: 2.25rem 1.5rem 3rem;
   position: relative;
   overflow: hidden;
 }
@@ -57,18 +57,9 @@ header::after {
 
 .header-content {
   position: relative;
-  max-width: 600px;
+  max-width: 860px;
   margin: 0 auto;
   text-align: center;
-}
-
-.header-label {
-  font-size: 0.67rem;
-  font-weight: 700;
-  letter-spacing: 0.15em;
-  text-transform: uppercase;
-  color: rgba(255,255,255,.36);
-  margin-bottom: 0.9rem;
 }
 
 h1 {
@@ -81,16 +72,10 @@ h1 {
   margin-bottom: 0.5rem;
 }
 
-.header-tagline {
-  font-size: 0.875rem;
-  color: rgba(255,255,255,.36);
-  margin-bottom: 2.1rem;
-}
-
 /* ── Search bar ──────────────────────────────────── */
 #search-wrap {
   position: relative;
-  max-width: 440px;
+  max-width: 560px;
   margin: 0 auto;
 }
 
@@ -140,12 +125,17 @@ h1 {
   50%       { opacity: .7;  }
 }
 
-/* ── Size filter ─────────────────────────────────── */
-#filter-wrap {
-  max-width: 440px;
-  margin: 0.75rem auto 0;
+/* ── Filter bar (single row below search) ────────── */
+#filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.75rem;
 }
 
+/* ── Size filter ─────────────────────────────────── */
 #filter-row {
   display: flex;
   justify-content: center;
@@ -215,16 +205,12 @@ h1 {
 
 /* ── Supermarket & unit-type pill toggles ─────────── */
 #unit-filter-wrap, #sm-filter-wrap {
-  max-width: 600px;
-  margin: 0.9rem auto 0;
   display: flex;
   flex-wrap: wrap;
   gap: 0.35rem 0.4rem;
   justify-content: center;
   align-items: center;
 }
-
-#unit-filter-wrap { margin-top: 0.6rem; }
 
 .filter-prefix {
   font-size: 0.68rem;
@@ -284,7 +270,7 @@ h1 {
 /* ── Status / empty state ────────────────────────── */
 #status {
   text-align: center;
-  padding: 3.5rem 1rem;
+  padding: 2rem 1rem;
   color: var(--text-soft);
   font-size: .875rem;
   line-height: 1.6;
@@ -292,8 +278,8 @@ h1 {
 
 /* ── Results ─────────────────────────────────────── */
 #results {
-  max-width: 760px;
-  margin: 0.5rem auto 3rem;
+  max-width: 860px;
+  margin: 0 auto 3rem;
   padding: 0 1rem;
 }
 
