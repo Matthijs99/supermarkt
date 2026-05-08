@@ -525,7 +525,6 @@
     let filterMin     = null;
     let filterMax     = null;
     let negativeTerms = [];
-    let excludedUnits = new Set();
 
     async function loadData() {
       for (const url of DATA_URLS) {
@@ -750,7 +749,6 @@
     function buildUnitFilter(unitTypes) {
       const wrap = document.getElementById('unit-filter-wrap');
       wrap.innerHTML = '';
-      excludedUnits = new Set();
 
       if (unitTypes.size < 2) { wrap.style.display = 'none'; return; }
 
@@ -761,18 +759,22 @@
 
       for (const unit of ['grams', 'ml', 'stuks']) {
         if (!unitTypes.has(unit)) continue;
+        const isActive = unit === filterUnit;
         const btn = document.createElement('button');
         btn.type = 'button';
-        btn.className = 'sm-pill active';
-        btn.setAttribute('aria-pressed', 'true');
+        btn.className = 'sm-pill' + (isActive ? ' active' : '');
+        btn.setAttribute('aria-pressed', String(isActive));
         btn.textContent = UNIT_LABELS[unit];
         btn.addEventListener('click', () => {
-          const wasActive = btn.getAttribute('aria-pressed') === 'true';
-          const nowActive = !wasActive;
-          btn.setAttribute('aria-pressed', String(nowActive));
-          btn.classList.toggle('active', nowActive);
-          if (nowActive) excludedUnits.delete(unit);
-          else           excludedUnits.add(unit);
+          if (filterUnit === unit) return;
+          const prev = filterUnit;
+          filterUnit = unit;
+          wrap.querySelectorAll('.sm-pill').forEach(b => {
+            const active = b === btn;
+            b.setAttribute('aria-pressed', String(active));
+            b.classList.toggle('active', active);
+          });
+          updateFilterUI(prev);
           applyFilterAndRender();
         });
         wrap.appendChild(btn);
@@ -812,15 +814,15 @@
       const bestBySm = new Map();
       for (const row of cachedResults) {
         if (!enabledSupermarkets.has(row.sm.n)) continue;
-        if (!passesSizeFilter(row.size)) continue;
-        if (negativeTerms.length > 0 && negativeTerms.some(t => row.product.n.toLowerCase().includes(t))) continue;
-        if (excludedUnits.size > 0) {
+        if (filterUnit) {
           const ut = row.size?.grams !== undefined ? 'grams'
                    : row.size?.ml    !== undefined ? 'ml'
                    : row.size?.stuks !== undefined ? 'stuks'
                    : null;
-          if (ut !== null && excludedUnits.has(ut)) continue;
+          if (ut !== null && ut !== filterUnit) continue;
         }
+        if (!passesSizeFilter(row.size)) continue;
+        if (negativeTerms.length > 0 && negativeTerms.some(t => row.product.n.toLowerCase().includes(t))) continue;
         const cur = bestBySm.get(row.sm);
         if (!cur
           || (row.unitPrice && (!cur.unitPrice || row.unitPrice.value < cur.unitPrice.value))
