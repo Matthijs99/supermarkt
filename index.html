@@ -237,6 +237,22 @@
       return '€ ' + n.toFixed(2);
     }
 
+    function normalizeStr(s) {
+      return s.toLowerCase().replace(/[^a-z0-9]/g, '');
+    }
+
+    function getGuaranteedMatches(products, query) {
+      const words  = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+      const concat = normalizeStr(query);
+      return products.filter(p => {
+        const name     = p.n.toLowerCase();
+        const nameNorm = normalizeStr(p.n);
+        const allWords = words.every(w => name.includes(w));
+        const concatHit = concat.length >= 2 && nameNorm.includes(concat);
+        return allWords || concatHit;
+      });
+    }
+
     // --- Fuzzy search ---
 
     function getFuse(supermarket) {
@@ -253,17 +269,21 @@
     }
 
     function searchSupermarket(supermarket, query) {
-      const results = getFuse(supermarket).search(query);
-      if (results.length === 0) return null;
+      const guaranteed = getGuaranteedMatches(supermarket.d, query);
+      const fuzzy      = getFuse(supermarket).search(query).map(r => r.item);
+
+      const seen = new Set(guaranteed);
+      for (const item of fuzzy) seen.add(item);
+      if (seen.size === 0) return null;
 
       let best = null, bestUnit = Infinity, bestPrice = Infinity;
-      for (const r of results) {
-        const size = parseSize(r.item.s);
-        const up   = calcUnitPrice(r.item.p, size);
+      for (const item of seen) {
+        const size = parseSize(item.s);
+        const up   = calcUnitPrice(item.p, size);
         if (up !== null) {
-          if (up.value < bestUnit) { bestUnit = up.value; best = r.item; }
-        } else if (best === null && r.item.p < bestPrice) {
-          bestPrice = r.item.p; best = r.item;
+          if (up.value < bestUnit) { bestUnit = up.value; best = item; }
+        } else if (best === null && item.p < bestPrice) {
+          bestPrice = item.p; best = item;
         }
       }
       return best;
