@@ -292,6 +292,7 @@ function buildFilters() {
     });
     wrap.appendChild(btn);
   });
+  wrap.style.display = 'none';
 }
 
 // --- Render ---
@@ -376,6 +377,7 @@ function search(query) {
     filterUnit = null;
     updateFilterUI(filterUnit);
     buildUnitFilter(new Set());
+    document.getElementById('sm-filter-wrap').style.display = 'none';
     resultsEl.innerHTML = '';
     statusEl.textContent = '';
     return;
@@ -399,6 +401,7 @@ function search(query) {
     }
     updateFilterUI(prevUnit);
     buildUnitFilter(newUnitTypes);
+    document.getElementById('sm-filter-wrap').style.display = '';
   }
 
   applyFilterAndRender();
