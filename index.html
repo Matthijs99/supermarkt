@@ -162,84 +162,112 @@
 
     #filter-row {
       display: flex;
-      align-items: center;
-      gap: 0.45rem;
-      font-size: 0.8rem;
-      color: rgba(255,255,255,.5);
       justify-content: center;
     }
 
-    #filter-row input[type=number] {
-      width: 68px;
-      padding: 0.4rem 0.6rem;
+    #filter-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      background: rgba(255,255,255,.1);
+      border: 1.5px solid rgba(255,255,255,.18);
+      border-radius: 999px;
+      padding: 0.38rem 0.5rem 0.38rem 0.75rem;
+      color: rgba(255,255,255,.5);
+      font-size: 0.8rem;
+      transition: border-color .2s;
+    }
+
+    #filter-pill:focus-within {
+      border-color: rgba(255,255,255,.32);
+    }
+
+    #filter-pill input[type=number] {
+      width: 52px;
+      background: none;
+      border: none;
+      color: #fff;
       font-family: 'Epilogue', sans-serif;
       font-size: 0.8rem;
-      background: rgba(255,255,255,.1);
-      color: #fff;
-      border: 1.5px solid rgba(255,255,255,.15);
-      border-radius: 8px;
-      outline: none;
-      transition: border-color .2s, background .2s;
+      font-weight: 500;
       text-align: center;
+      outline: none;
       -moz-appearance: textfield;
     }
 
-    #filter-row input[type=number]::placeholder { color: rgba(255,255,255,.3); }
-    #filter-row input[type=number]:focus {
-      background: rgba(255,255,255,.16);
-      border-color: rgba(255,255,255,.3);
-    }
-    #filter-row input[type=number]::-webkit-outer-spin-button,
-    #filter-row input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
+    #filter-pill input[type=number]::placeholder { color: rgba(255,255,255,.3); }
+    #filter-pill input[type=number]::-webkit-outer-spin-button,
+    #filter-pill input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
 
-    #filter-unit-label { color: rgba(255,255,255,.38); font-size: 0.75rem; }
+    #filter-unit-label {
+      font-size: 0.75rem;
+      color: rgba(255,255,255,.38);
+      min-width: 3.5ch;
+    }
+
+    .filter-sep { color: rgba(255,255,255,.3); }
 
     #filter-clear {
-      background: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(255,255,255,.08);
       border: none;
+      border-radius: 50%;
+      width: 22px;
+      height: 22px;
       cursor: pointer;
-      color: rgba(255,255,255,.3);
-      font-size: 1.1rem;
-      padding: 0 0.2rem;
-      line-height: 1;
-      transition: color .15s;
+      color: rgba(255,255,255,.4);
+      padding: 0;
+      transition: background .15s, color .15s;
+      flex-shrink: 0;
     }
-    #filter-clear:hover { color: rgba(255,255,255,.7); }
+    #filter-clear:hover {
+      background: rgba(255,255,255,.18);
+      color: rgba(255,255,255,.85);
+    }
 
-    /* ── Supermarket checkboxes ───────────────────────── */
+    /* ── Supermarket pill toggles ────────────────────── */
     #sm-filter-wrap {
       max-width: 600px;
-      margin: 0.85rem auto 0;
+      margin: 0.9rem auto 0;
       display: flex;
       flex-wrap: wrap;
-      gap: 0.35rem 0.5rem;
+      gap: 0.35rem 0.4rem;
       justify-content: center;
     }
 
-    #sm-filter-wrap label {
+    .sm-pill {
+      font-family: 'Epilogue', sans-serif;
       font-size: 0.68rem;
       font-weight: 700;
-      letter-spacing: 0.05em;
+      letter-spacing: 0.06em;
       text-transform: uppercase;
-      color: rgba(255,255,255,.45);
       cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 0.3rem;
-      background: rgba(255,255,255,.07);
-      padding: 0.25rem 0.6rem;
-      border-radius: 5px;
-      transition: color .15s, background .15s;
+      background: rgba(255,255,255,.04);
+      color: rgba(255,255,255,.28);
+      border: 1.5px solid rgba(255,255,255,.1);
+      padding: 0.28rem 0.65rem;
+      border-radius: 999px;
+      transition: background .15s, color .15s, border-color .15s, transform .1s;
+      line-height: 1;
     }
 
-    #sm-filter-wrap label:hover {
-      color: rgba(255,255,255,.8);
-      background: rgba(255,255,255,.12);
+    .sm-pill.active {
+      background: rgba(255,255,255,.14);
+      color: #fff;
+      border-color: rgba(255,255,255,.28);
+      box-shadow: 0 1px 3px rgba(0,0,0,.15);
     }
 
-    #sm-filter-wrap input[type="checkbox"] {
-      cursor: pointer;
-      accent-color: var(--orange);
+    .sm-pill:hover {
+      background: rgba(255,255,255,.17);
+      color: rgba(255,255,255,.9);
+      border-color: rgba(255,255,255,.3);
+    }
+
+    .sm-pill:active {
+      transform: scale(0.93);
     }
 
     /* Wave divider at bottom of header */
@@ -432,12 +460,27 @@
       </div>
       <div id="filter-wrap" style="display:none">
         <div id="filter-row">
-          <span>Grootte:</span>
-          <input type="number" id="min-size" placeholder="min" min="0">
-          <span>–</span>
-          <input type="number" id="max-size" placeholder="max" min="0">
-          <span id="filter-unit-label"></span>
-          <button id="filter-clear" aria-label="Wis filter" title="Wis filter">×</button>
+          <div id="filter-pill">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+                 stroke-linejoin="round" aria-hidden="true">
+              <line x1="4" y1="6" x2="20" y2="6"/>
+              <line x1="7" y1="12" x2="17" y2="12"/>
+              <line x1="10" y1="18" x2="14" y2="18"/>
+            </svg>
+            <input type="number" id="min-size" placeholder="min" min="0">
+            <span class="filter-sep">–</span>
+            <input type="number" id="max-size" placeholder="max" min="0">
+            <span id="filter-unit-label"></span>
+            <button id="filter-clear" aria-label="Wis filter" title="Wis filter">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none"
+                   stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+                   stroke-linejoin="round" aria-hidden="true">
+                <line x1="18" y1="6" x2="6" y2="18"/>
+                <line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+            </button>
+          </div>
         </div>
       </div>
       <div id="sm-filter-wrap"></div>
@@ -672,18 +715,21 @@
       const wrap = document.getElementById('sm-filter-wrap');
       supermarketsData.forEach(sm => {
         enabledSupermarkets.add(sm.n);
-        const label = document.createElement('label');
-        const cb = document.createElement('input');
-        cb.type = 'checkbox';
-        cb.checked = true;
-        cb.addEventListener('change', () => {
-          if (cb.checked) enabledSupermarkets.add(sm.n);
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'sm-pill active';
+        btn.setAttribute('aria-pressed', 'true');
+        btn.textContent = (sm.c || sm.n).replace(/\s*\(via[^)]*\)/i, '');
+        btn.addEventListener('click', () => {
+          const wasActive = btn.getAttribute('aria-pressed') === 'true';
+          const nowActive = !wasActive;
+          btn.setAttribute('aria-pressed', String(nowActive));
+          btn.classList.toggle('active', nowActive);
+          if (nowActive) enabledSupermarkets.add(sm.n);
           else enabledSupermarkets.delete(sm.n);
           applyFilterAndRender();
         });
-        label.appendChild(cb);
-        label.appendChild(document.createTextNode(sm.c || sm.n));
-        wrap.appendChild(label);
+        wrap.appendChild(btn);
       });
     }
 
