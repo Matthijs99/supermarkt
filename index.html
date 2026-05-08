@@ -8,42 +8,42 @@
   <link rel="preload" href="https://www.checkjebon.nl/data/supermarkets.json" as="fetch" crossorigin>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300..900&family=Epilogue:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/fuse.js@7/dist/fuse.min.js"></script>
   <style>
     :root {
-      --ink:          #181e1a;
-      --green:        #1b3d2c;
-      --green-mid:    #2b5240;
-      --green-tint:   rgba(27,61,44,.08);
-      --cream:        #f8f5ef;
-      --cream-dark:   #ede8df;
-      --orange:       #df5900;
-      --orange-bg:    #fff3ea;
-      --orange-border:#f0a265;
-      --text:         #1a1a18;
-      --text-mid:     #3d3830;
-      --text-soft:    #9b9088;
-      --border:       #e4ddd3;
+      --ink:          #0f172a;
+      --blue:         #1a56db;
+      --blue-dark:    #1340a8;
+      --blue-tint:    rgba(26,86,219,.08);
+      --bg:           #f9fafb;
+      --bg-dark:      #f1f5f9;
+      --amber:        #f59e0b;
+      --amber-bg:     #fffbeb;
+      --amber-border: #fcd34d;
+      --text:         #111827;
+      --text-mid:     #374151;
+      --text-soft:    #6b7280;
+      --border:       #e5e7eb;
       --white:        #ffffff;
       --r:            10px;
-      --shadow-sm:    0 1px 3px rgba(18,12,4,.07);
-      --shadow:       0 3px 8px rgba(18,12,4,.08), 0 10px 28px rgba(18,12,4,.06);
+      --shadow-sm:    0 1px 3px rgba(0,0,0,.06);
+      --shadow:       0 3px 8px rgba(0,0,0,.08), 0 10px 28px rgba(0,0,0,.06);
     }
 
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      font-family: 'Epilogue', system-ui, sans-serif;
-      background: var(--cream);
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg);
       color: var(--text);
       min-height: 100vh;
     }
 
     /* ── Header ─────────────────────────────────────── */
     header {
-      background: var(--green);
-      padding: 2.75rem 1.5rem 5.5rem;
+      background: linear-gradient(135deg, var(--blue-dark) 0%, var(--blue) 100%);
+      padding: 2.75rem 1.5rem 3.5rem;
       position: relative;
       overflow: hidden;
     }
@@ -53,7 +53,7 @@
       position: absolute;
       width: 520px; height: 520px;
       border-radius: 50%;
-      background: radial-gradient(circle, rgba(50,90,65,.55) 0%, transparent 65%);
+      background: radial-gradient(circle, rgba(30,60,180,.55) 0%, transparent 65%);
       top: -210px; right: -120px;
       pointer-events: none;
     }
@@ -63,7 +63,7 @@
       position: absolute;
       width: 280px; height: 280px;
       border-radius: 50%;
-      background: radial-gradient(circle, rgba(50,90,65,.3) 0%, transparent 70%);
+      background: radial-gradient(circle, rgba(30,60,180,.3) 0%, transparent 70%);
       bottom: 10px; left: -60px;
       pointer-events: none;
     }
@@ -85,13 +85,12 @@
     }
 
     h1 {
-      font-family: 'Fraunces', Georgia, serif;
+      font-family: 'Inter', system-ui, sans-serif;
       font-size: clamp(2.1rem, 5.5vw, 3.1rem);
-      font-weight: 800;
-      font-variation-settings: 'opsz' 144;
+      font-weight: 900;
       color: #fff;
       line-height: 1.08;
-      letter-spacing: -0.025em;
+      letter-spacing: -0.03em;
       margin-bottom: 0.5rem;
     }
 
@@ -123,7 +122,7 @@
     #search {
       width: 100%;
       padding: .85rem 1.1rem .85rem 2.65rem;
-      font-family: 'Epilogue', sans-serif;
+      font-family: 'Inter', sans-serif;
       font-size: .95rem;
       font-weight: 500;
       background: rgba(255,255,255,.1);
@@ -187,7 +186,7 @@
       background: none;
       border: none;
       color: #fff;
-      font-family: 'Epilogue', sans-serif;
+      font-family: 'Inter', sans-serif;
       font-size: 0.8rem;
       font-weight: 500;
       text-align: center;
@@ -249,7 +248,7 @@
     }
 
     .sm-pill {
-      font-family: 'Epilogue', sans-serif;
+      font-family: 'Inter', sans-serif;
       font-size: 0.68rem;
       font-weight: 700;
       letter-spacing: 0.06em;
@@ -307,7 +306,7 @@
     /* ── Results ─────────────────────────────────────── */
     #results {
       max-width: 760px;
-      margin: 1.25rem auto 3rem;
+      margin: 0.5rem auto 3rem;
       padding: 0 1rem;
     }
 
@@ -332,9 +331,9 @@
     }
 
     .result-row.cheapest {
-      background: var(--orange-bg);
-      border-color: var(--orange-border);
-      border-left: 3px solid var(--orange);
+      background: var(--amber-bg);
+      border-color: var(--amber-border);
+      border-left: 3px solid var(--amber);
     }
 
     @keyframes card-in {
@@ -359,16 +358,16 @@
       font-weight: 700;
       letter-spacing: .055em;
       text-transform: uppercase;
-      color: var(--green-mid);
-      background: var(--green-tint);
+      color: var(--blue-dark);
+      background: var(--blue-tint);
       padding: .22rem .55rem;
       border-radius: 5px;
       white-space: nowrap;
     }
 
     .cheapest .supermarket-name {
-      color: var(--orange);
-      background: rgba(223,89,0,.09);
+      color: #92400e;
+      background: rgba(245,158,11,.1);
     }
 
     /* Product name */
@@ -384,7 +383,7 @@
     }
 
     .product-name a:hover {
-      color: var(--green);
+      color: var(--blue);
       text-decoration: underline;
       text-decoration-color: var(--border);
       text-underline-offset: 3px;
@@ -397,8 +396,8 @@
       font-weight: 800;
       letter-spacing: .07em;
       text-transform: uppercase;
-      background: var(--orange);
-      color: #fff;
+      background: var(--amber);
+      color: #78350f;
       padding: 2px 7px;
       border-radius: 999px;
       margin-left: 7px;
@@ -412,15 +411,14 @@
     }
 
     .unit-price {
-      font-family: 'Fraunces', Georgia, serif;
+      font-family: 'Inter', system-ui, sans-serif;
       font-size: 1.05rem;
       font-weight: 700;
-      font-variation-settings: 'opsz' 40;
       color: var(--ink);
       letter-spacing: -.01em;
     }
 
-    .cheapest .unit-price { color: var(--orange); }
+    .cheapest .unit-price { color: #b45309; }
 
     .price {
       font-size: .72rem;
@@ -429,7 +427,7 @@
       margin-top: 1px;
     }
 
-    .cheapest .price { color: rgba(223,89,0,.65); }
+    .cheapest .price { color: rgba(180,83,9,.65); }
 
     .size {
       font-size: .7rem;
@@ -439,7 +437,7 @@
 
     /* ── Mobile ──────────────────────────────────────── */
     @media (max-width: 520px) {
-      header { padding: 2rem 1.25rem 4.5rem; }
+      header { padding: 2rem 1.25rem 3rem; }
 
       .result-row {
         grid-template-columns: 1fr auto;
@@ -500,7 +498,7 @@
     <div class="header-wave">
       <svg viewBox="0 0 1440 52" preserveAspectRatio="none" aria-hidden="true">
         <path d="M0,28 C240,52 480,4 720,26 C960,48 1200,12 1440,28 L1440,52 L0,52 Z"
-              fill="#f8f5ef"/>
+              fill="#f9fafb"/>
       </svg>
     </div>
   </header>
