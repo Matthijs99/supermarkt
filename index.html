@@ -330,22 +330,9 @@
     function searchSupermarket(supermarket, query) {
       const guaranteed = getGuaranteedMatches(supermarket.d, query);
       const fuzzy      = getFuse(supermarket).search(query).map(r => r.item);
-
       const seen = new Set(guaranteed);
       for (const item of fuzzy) seen.add(item);
-      if (seen.size === 0) return null;
-
-      let best = null, bestUnit = Infinity, bestPrice = Infinity;
-      for (const item of seen) {
-        const size = parseSize(item.s);
-        const up   = calcUnitPrice(item.p, size);
-        if (up !== null) {
-          if (up.value < bestUnit) { bestUnit = up.value; best = item; }
-        } else if (best === null && item.p < bestPrice) {
-          bestPrice = item.p; best = item;
-        }
-      }
-      return best;
+      return [...seen];
     }
 
     // --- Size filter ---
@@ -434,9 +421,18 @@
       const resultsEl = document.getElementById('results');
       const statusEl  = document.getElementById('status');
 
-      const rows = cachedResults
-        .filter(row => enabledSupermarkets.has(row.sm.n))
-        .filter(row => passesSizeFilter(row.size));
+      const bestBySm = new Map();
+      for (const row of cachedResults) {
+        if (!enabledSupermarkets.has(row.sm.n)) continue;
+        if (!passesSizeFilter(row.size)) continue;
+        const cur = bestBySm.get(row.sm);
+        if (!cur
+          || (row.unitPrice && (!cur.unitPrice || row.unitPrice.value < cur.unitPrice.value))
+          || (!row.unitPrice && !cur.unitPrice && row.product.p < cur.product.p)) {
+          bestBySm.set(row.sm, row);
+        }
+      }
+      const rows = [...bestBySm.values()];
 
       if (rows.length === 0) {
         statusEl.textContent = cachedResults.length === 0
@@ -495,15 +491,14 @@
 
       if (query !== currentQuery) {
         currentQuery = query;
-        cachedResults = supermarketsData
-          .map(sm => {
-            const product = searchSupermarket(sm, query);
-            if (!product) return null;
-            const size      = parseSize(product.s);
-            const unitPrice = calcUnitPrice(product.p, size);
-            return { sm, product, size, unitPrice };
-          })
-          .filter(Boolean);
+        cachedResults = supermarketsData.flatMap(sm => {
+          const products = searchSupermarket(sm, query);
+          return products.map(item => {
+            const size      = parseSize(item.s);
+            const unitPrice = calcUnitPrice(item.p, size);
+            return { sm, product: item, size, unitPrice };
+          });
+        });
 
         const prevUnit = filterUnit;
         filterUnit = determineFilterUnit(cachedResults);
