@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="nl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Supermarkt Prijsvergelijker</title>
+  <script src="https://cdn.jsdelivr.net/npm/fuse.js@7/dist/fuse.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #f0f2f5;
+      color: #222;
+      min-height: 100vh;
+    }
+    header {
+      background: #fff;
+      border-bottom: 1px solid #e0e0e0;
+      padding: 1.5rem 1rem 1.25rem;
+      text-align: center;
+    }
+    h1 {
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: #111;
+      margin-bottom: 1rem;
+    }
+    #search-wrap { max-width: 480px; margin: 0 auto; }
+    #search {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      font-size: 1rem;
+      border: 2px solid #ddd;
+      border-radius: 8px;
+      outline: none;
+      transition: border-color 0.15s;
+      background: #fff;
+    }
+    #search:focus { border-color: #4a90e2; }
+    #search:disabled { background: #f5f5f5; color: #aaa; }
+    #status {
+      text-align: center;
+      padding: 2.5rem 1rem;
+      color: #888;
+      font-size: 0.9rem;
+    }
+    #results {
+      max-width: 760px;
+      margin: 1.25rem auto 2rem;
+      padding: 0 1rem;
+    }
+    .result-row {
+      background: #fff;
+      border: 1px solid #e5e5e5;
+      border-radius: 8px;
+      padding: 0.8rem 1rem;
+      margin-bottom: 0.5rem;
+      display: grid;
+      grid-template-columns: 150px 1fr auto;
+      gap: 0.25rem 1rem;
+      align-items: center;
+    }
+    .result-row.cheapest {
+      border-color: #4caf50;
+      background: #f1faf1;
+    }
+    .supermarket-name {
+      font-weight: 600;
+      font-size: 0.85rem;
+      color: #444;
+    }
+    .product-name {
+      font-size: 0.9rem;
+      color: #333;
+      line-height: 1.4;
+    }
+    .product-name a {
+      color: inherit;
+      text-decoration: none;
+    }
+    .product-name a:hover { text-decoration: underline; color: #4a90e2; }
+    .cheapest-badge {
+      display: inline-block;
+      font-size: 0.65rem;
+      font-weight: 700;
+      background: #4caf50;
+      color: #fff;
+      padding: 1px 5px;
+      border-radius: 3px;
+      margin-left: 5px;
+      vertical-align: middle;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+    .prices {
+      text-align: right;
+      white-space: nowrap;
+    }
+    .price { font-weight: 700; font-size: 1rem; }
+    .size { color: #999; font-size: 0.78rem; margin-top: 1px; }
+    .unit-price {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: #4a90e2;
+      margin-top: 1px;
+    }
+    .cheapest .unit-price { color: #2e7d32; }
+    @media (max-width: 520px) {
+      .result-row {
+        grid-template-columns: 1fr auto;
+        gap: 0.2rem 0.75rem;
+      }
+      .supermarket-name {
+        grid-column: 1 / -1;
+        margin-bottom: 0.1rem;
+        color: #888;
+        font-size: 0.78rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Supermarkt Prijsvergelijker</h1>
+    <div id="search-wrap">
+      <input type="search" id="search" placeholder="Data wordt geladen…" disabled autocomplete="off">
+    </div>
+  </header>
+  <div id="status">Even geduld, data wordt geladen…</div>
+  <div id="results"></div>
+
+  <script>
+    const DATA_URLS = [
+      'https://www.checkjebon.nl/data/supermarkets.json',
+      'https://raw.githubusercontent.com/supermarkt/checkjebon/main/data/supermarkets.json',
+    ];
+
+    let supermarketsData = null;
+    const fuseCache = new Map();
+    let debounceTimer = null;
+
+    async function loadData() {
+      for (const url of DATA_URLS) {
+        try {
+          const res = await fetch(url);
+          if (!res.ok) throw new Error(res.status);
+          supermarketsData = await res.json();
+          return;
+        } catch (e) {
+          console.warn('Could not load from', url, e);
+        }
+      }
+      throw new Error('All data sources failed');
+    }
+
+    // --- Size parsing ---
+
+    function parseNum(s) {
+      return parseFloat(String(s).replace(',', '.'));
+    }
+
+    function weightToGrams(amount, unit) {
+      switch (unit.toLowerCase()) {
+        case 'mg':                  return amount / 1000;
+        case 'g': case 'gram':      return amount;
+        case 'kg':                  return amount * 1000;
+        default:                    return null;
+      }
+    }
+
+    function volumeToMl(amount, unit) {
+      switch (unit.toLowerCase()) {
+        case 'ml':                  return amount;
+        case 'cl':                  return amount * 10;
+        case 'dl':                  return amount * 100;
+        case 'l': case 'liter':     return amount * 1000;
+        default:                    return null;
+      }
+    }
+
+    const WEIGHT_RE = /g|kg|mg|gram/i;
+    const VOLUME_RE = /ml|cl|dl|l|liter/i;
+
+    function parseSize(s) {
+      if (!s) return null;
+      const str = s.trim();
+
+      // "per stuk" or bare "stuk"
+      if (/^(per\s+)?stuk$/i.test(str)) return { stuks: 1 };
+
+      // "N stuks" / "N st."
+      let m = str.match(/^(\d+(?:[.,]\d+)?)\s*stuks?\.?$/i);
+      if (m) return { stuks: parseNum(m[1]) };
+
+      // "per 100 gram" / "per 100 ml" (already normalised)
+      m = str.match(/^per\s+(\d+(?:[.,]\d+)?)\s*(g|kg|mg|ml|cl|dl|l|gram|liter)\b/i);
+      if (m) {
+        const n = parseNum(m[1]), u = m[2];
+        const g = weightToGrams(n, u);
+        if (g !== null) return { grams: g };
+        const ml = volumeToMl(n, u);
+        if (ml !== null) return { ml };
+      }
+
+      // "N x M unit" (multipacks)
+      m = str.match(/^(\d+(?:[.,]\d+)?)\s*[xX×]\s*(\d+(?:[.,]\d+)?)\s*(g|kg|mg|ml|cl|dl|l|gram|liter)\b/i);
+      if (m) {
+        const total = parseNum(m[1]) * parseNum(m[2]), u = m[3];
+        const g = weightToGrams(total, u);
+        if (g !== null) return { grams: g };
+        const ml = volumeToMl(total, u);
+        if (ml !== null) return { ml };
+      }
+
+      // "ca. N unit" or plain "N unit"
+      m = str.match(/(?:ca\.?\s*)?(\d+(?:[.,]\d+)?)\s*(g|kg|mg|ml|cl|dl|l|gram|liter)\b/i);
+      if (m) {
+        const n = parseNum(m[1]), u = m[2];
+        const g = weightToGrams(n, u);
+        if (g !== null) return { grams: g };
+        const ml = volumeToMl(n, u);
+        if (ml !== null) return { ml };
+      }
+
+      return null;
+    }
+
+    function calcUnitPrice(price, size) {
+      if (!size) return null;
+      if (size.grams > 0) return { value: price / size.grams * 100, label: '/100g' };
+      if (size.ml > 0)    return { value: price / size.ml * 100,    label: '/100ml' };
+      if (size.stuks > 0) return { value: price / size.stuks,        label: '/stuk' };
+      return null;
+    }
+
+    function fmt(n) {
+      return '€ ' + n.toFixed(2);
+    }
+
+    // --- Fuzzy search ---
+
+    function getFuse(supermarket) {
+      if (!fuseCache.has(supermarket.n)) {
+        fuseCache.set(supermarket.n, new Fuse(supermarket.d, {
+          keys: ['n'],
+          threshold: 0.4,
+          includeScore: true,
+          minMatchCharLength: 2,
+        }));
+      }
+      return fuseCache.get(supermarket.n);
+    }
+
+    function searchSupermarket(supermarket, query) {
+      const results = getFuse(supermarket).search(query, { limit: 1 });
+      return results.length > 0 ? results[0].item : null;
+    }
+
+    // --- Render ---
+
+    function search(query) {
+      const resultsEl = document.getElementById('results');
+      const statusEl  = document.getElementById('status');
+
+      if (!query.trim()) {
+        resultsEl.innerHTML = '';
+        statusEl.textContent = '';
+        return;
+      }
+
+      const rows = supermarketsData
+        .map(sm => {
+          const product = searchSupermarket(sm, query);
+          if (!product) return null;
+          const size      = parseSize(product.s);
+          const unitPrice = calcUnitPrice(product.p, size);
+          return { sm, product, size, unitPrice };
+        })
+        .filter(Boolean);
+
+      if (rows.length === 0) {
+        statusEl.textContent = 'Geen resultaten gevonden.';
+        resultsEl.innerHTML = '';
+        return;
+      }
+
+      rows.sort((a, b) => {
+        if (a.unitPrice && b.unitPrice) return a.unitPrice.value - b.unitPrice.value;
+        if (a.unitPrice) return -1;
+        if (b.unitPrice) return 1;
+        return a.product.p - b.product.p;
+      });
+
+      statusEl.textContent = '';
+      const cheapest = rows[0];
+
+      resultsEl.innerHTML = rows.map(row => {
+        const isCheapest = row === cheapest;
+        const href = (row.sm.u && row.product.l) ? row.sm.u + row.product.l : null;
+        const nameHtml = href
+          ? `<a href="${href}" target="_blank" rel="noopener">${row.product.n}</a>`
+          : row.product.n;
+        const badge     = isCheapest ? `<span class="cheapest-badge">goedkoopst</span>` : '';
+        const unitHtml  = row.unitPrice
+          ? `<div class="unit-price">${fmt(row.unitPrice.value)}${row.unitPrice.label}</div>`
+          : '';
+
+        return `
+          <div class="result-row${isCheapest ? ' cheapest' : ''}">
+            <div class="supermarket-name">${row.sm.c || row.sm.n}</div>
+            <div class="product-name">${nameHtml}${badge}</div>
+            <div class="prices">
+              <div class="price">${fmt(row.product.p)}</div>
+              <div class="size">${row.product.s || ''}</div>
+              ${unitHtml}
+            </div>
+          </div>`;
+      }).join('');
+    }
+
+    // --- Init ---
+
+    const searchEl = document.getElementById('search');
+    const statusEl = document.getElementById('status');
+
+    searchEl.addEventListener('input', () => {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => search(searchEl.value), 300);
+    });
+
+    loadData()
+      .then(() => {
+        // Pre-build all Fuse indexes while the user hasn't typed yet
+        supermarketsData.forEach(sm => getFuse(sm));
+        statusEl.textContent = '';
+        searchEl.disabled = false;
+        searchEl.placeholder = 'Zoek een product… bijv. "paprika chips"';
+        searchEl.focus();
+      })
+      .catch(() => {
+        statusEl.textContent = 'Kon data niet laden. Controleer je internetverbinding en herlaad de pagina.';
+      });
+  </script>
+</body>
+</html>
