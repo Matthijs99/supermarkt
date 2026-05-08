@@ -393,9 +393,12 @@ function search(query) {
     });
 
     const prevUnit = filterUnit;
-    filterUnit = determineFilterUnit(cachedResults);
+    const newUnitTypes = getUnitTypes(cachedResults);
+    if (!filterUnit || !newUnitTypes.has(filterUnit)) {
+      filterUnit = determineFilterUnit(cachedResults);
+    }
     updateFilterUI(prevUnit);
-    buildUnitFilter(getUnitTypes(cachedResults));
+    buildUnitFilter(newUnitTypes);
   }
 
   applyFilterAndRender();
