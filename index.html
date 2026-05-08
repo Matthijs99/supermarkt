@@ -227,14 +227,25 @@
       color: rgba(255,255,255,.85);
     }
 
-    /* ── Supermarket pill toggles ────────────────────── */
-    #sm-filter-wrap {
+    /* ── Supermarket & unit-type pill toggles ─────────── */
+    #unit-filter-wrap, #sm-filter-wrap {
       max-width: 600px;
       margin: 0.9rem auto 0;
       display: flex;
       flex-wrap: wrap;
       gap: 0.35rem 0.4rem;
       justify-content: center;
+      align-items: center;
+    }
+
+    #unit-filter-wrap { margin-top: 0.6rem; }
+
+    .filter-prefix {
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,.28);
     }
 
     .sm-pill {
@@ -483,6 +494,7 @@
           </div>
         </div>
       </div>
+      <div id="unit-filter-wrap" style="display:none"></div>
       <div id="sm-filter-wrap"></div>
     </div>
     <div class="header-wave">
@@ -512,6 +524,8 @@
     let filterUnit    = null;
     let filterMin     = null;
     let filterMax     = null;
+    let negativeTerms = [];
+    let excludedUnits = new Set();
 
     async function loadData() {
       for (const url of DATA_URLS) {
@@ -615,6 +629,16 @@
       return s.toLowerCase().replace(/[^a-z0-9]/g, '');
     }
 
+    function parseQuery(raw) {
+      const tokens = raw.trim().split(/\s+/).filter(Boolean);
+      const neg = [], pos = [];
+      for (const t of tokens) {
+        if (t.startsWith('-') && t.length > 1) neg.push(t.slice(1).toLowerCase());
+        else pos.push(t);
+      }
+      return { positiveQuery: pos.join(' '), negativeTerms: neg };
+    }
+
     function getGuaranteedMatches(products, query) {
       const words  = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
       const concat = normalizeStr(query);
@@ -711,6 +735,52 @@
       wrap.style.display = '';
     }
 
+    function getUnitTypes(rows) {
+      const types = new Set();
+      for (const row of rows) {
+        if (row.size?.grams !== undefined) types.add('grams');
+        else if (row.size?.ml !== undefined) types.add('ml');
+        else if (row.size?.stuks !== undefined) types.add('stuks');
+      }
+      return types;
+    }
+
+    const UNIT_LABELS = { grams: 'gram', ml: 'ml', stuks: 'stuks' };
+
+    function buildUnitFilter(unitTypes) {
+      const wrap = document.getElementById('unit-filter-wrap');
+      wrap.innerHTML = '';
+      excludedUnits = new Set();
+
+      if (unitTypes.size < 2) { wrap.style.display = 'none'; return; }
+
+      const prefix = document.createElement('span');
+      prefix.className = 'filter-prefix';
+      prefix.textContent = 'Eenheid:';
+      wrap.appendChild(prefix);
+
+      for (const unit of ['grams', 'ml', 'stuks']) {
+        if (!unitTypes.has(unit)) continue;
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'sm-pill active';
+        btn.setAttribute('aria-pressed', 'true');
+        btn.textContent = UNIT_LABELS[unit];
+        btn.addEventListener('click', () => {
+          const wasActive = btn.getAttribute('aria-pressed') === 'true';
+          const nowActive = !wasActive;
+          btn.setAttribute('aria-pressed', String(nowActive));
+          btn.classList.toggle('active', nowActive);
+          if (nowActive) excludedUnits.delete(unit);
+          else           excludedUnits.add(unit);
+          applyFilterAndRender();
+        });
+        wrap.appendChild(btn);
+      }
+
+      wrap.style.display = '';
+    }
+
     function buildFilters() {
       const wrap = document.getElementById('sm-filter-wrap');
       supermarketsData.forEach(sm => {
@@ -743,6 +813,14 @@
       for (const row of cachedResults) {
         if (!enabledSupermarkets.has(row.sm.n)) continue;
         if (!passesSizeFilter(row.size)) continue;
+        if (negativeTerms.length > 0 && negativeTerms.some(t => row.product.n.toLowerCase().includes(t))) continue;
+        if (excludedUnits.size > 0) {
+          const ut = row.size?.grams !== undefined ? 'grams'
+                   : row.size?.ml    !== undefined ? 'ml'
+                   : row.size?.stuks !== undefined ? 'stuks'
+                   : null;
+          if (ut !== null && excludedUnits.has(ut)) continue;
+        }
         const cur = bestBySm.get(row.sm);
         if (!cur
           || (row.unitPrice && (!cur.unitPrice || row.unitPrice.value < cur.unitPrice.value))
@@ -798,19 +876,24 @@
       const resultsEl = document.getElementById('results');
       const statusEl  = document.getElementById('status');
 
-      if (!query.trim()) {
+      const { positiveQuery, negativeTerms: newNeg } = parseQuery(query);
+      negativeTerms = newNeg;
+
+      if (!positiveQuery) {
         cachedResults = [];
+        currentQuery = '';
         filterUnit = null;
         updateFilterUI(filterUnit);
+        buildUnitFilter(new Set());
         resultsEl.innerHTML = '';
         statusEl.textContent = '';
         return;
       }
 
-      if (query !== currentQuery) {
-        currentQuery = query;
+      if (positiveQuery !== currentQuery) {
+        currentQuery = positiveQuery;
         cachedResults = supermarketsData.flatMap(sm => {
-          const products = searchSupermarket(sm, query);
+          const products = searchSupermarket(sm, positiveQuery);
           return products.map(item => {
             const size      = parseSize(item.s);
             const unitPrice = calcUnitPrice(item.p, size);
@@ -821,6 +904,7 @@
         const prevUnit = filterUnit;
         filterUnit = determineFilterUnit(cachedResults);
         updateFilterUI(prevUnit);
+        buildUnitFilter(getUnitTypes(cachedResults));
       }
 
       applyFilterAndRender();
