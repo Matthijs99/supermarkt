@@ -98,13 +98,12 @@
       text-align: right;
       white-space: nowrap;
     }
-    .price { font-weight: 700; font-size: 1rem; }
+    .price { font-weight: 400; font-size: 0.78rem; color: #999; margin-top: 1px; }
     .size { color: #999; font-size: 0.78rem; margin-top: 1px; }
     .unit-price {
-      font-size: 0.78rem;
-      font-weight: 600;
+      font-size: 1rem;
+      font-weight: 700;
       color: #4a90e2;
-      margin-top: 1px;
     }
     .cheapest .unit-price { color: #2e7d32; }
     #filter-wrap { max-width: 480px; margin: 0.6rem auto 0; }
@@ -473,9 +472,9 @@
             <div class="supermarket-name">${row.sm.c || row.sm.n}</div>
             <div class="product-name">${nameHtml}${badge}</div>
             <div class="prices">
+              ${unitHtml}
               <div class="price">${fmt(row.product.p)}</div>
               <div class="size">${row.product.s || ''}</div>
-              ${unitHtml}
             </div>
           </div>`;
       }).join('');
