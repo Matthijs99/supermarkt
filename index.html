@@ -279,7 +279,7 @@
       if (!fuseCache.has(supermarket.n)) {
         fuseCache.set(supermarket.n, new Fuse(supermarket.d, {
           keys: ['n'],
-          threshold: 0.4,
+          threshold: 0.2,
           includeScore: true,
           minMatchCharLength: 2,
           useExtendedSearch: true,
