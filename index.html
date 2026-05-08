@@ -127,6 +127,26 @@
       color: #bbb; font-size: 1.1rem; padding: 0 0.2rem; line-height: 1;
     }
     #filter-clear:hover { color: #666; }
+    #sm-filter-wrap {
+      max-width: 480px;
+      margin: 0.75rem auto 0;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem 0.75rem;
+      justify-content: center;
+    }
+    #sm-filter-wrap label {
+      font-size: 0.8rem;
+      color: #555;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+    #sm-filter-wrap input[type="checkbox"] {
+      cursor: pointer;
+      accent-color: #4a90e2;
+    }
     @media (max-width: 520px) {
       .result-row {
         grid-template-columns: 1fr auto;
@@ -157,6 +177,7 @@
         <button id="filter-clear" aria-label="Wis filter" title="Wis filter">×</button>
       </div>
     </div>
+    <div id="sm-filter-wrap"></div>
   </header>
   <div id="status">Even geduld, data wordt geladen…</div>
   <div id="results"></div>
@@ -170,6 +191,7 @@
     let supermarketsData = null;
     const fuseCache = new Map();
     let debounceTimer = null;
+    const enabledSupermarkets = new Set();
 
     let currentQuery  = '';
     let cachedResults = [];
@@ -272,7 +294,7 @@
     }
 
     function fmt(n) {
-      return '€ ' + n.toFixed(2);
+      return '€ ' + n.toFixed(2);
     }
 
     function normalizeStr(s) {
@@ -388,13 +410,34 @@
       wrap.style.display = '';
     }
 
+    function buildFilters() {
+      const wrap = document.getElementById('sm-filter-wrap');
+      supermarketsData.forEach(sm => {
+        enabledSupermarkets.add(sm.n);
+        const label = document.createElement('label');
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.checked = true;
+        cb.addEventListener('change', () => {
+          if (cb.checked) enabledSupermarkets.add(sm.n);
+          else enabledSupermarkets.delete(sm.n);
+          applyFilterAndRender();
+        });
+        label.appendChild(cb);
+        label.appendChild(document.createTextNode(sm.c || sm.n));
+        wrap.appendChild(label);
+      });
+    }
+
     // --- Render ---
 
     function applyFilterAndRender() {
       const resultsEl = document.getElementById('results');
       const statusEl  = document.getElementById('status');
 
-      const rows = cachedResults.filter(row => passesSizeFilter(row.size));
+      const rows = cachedResults
+        .filter(row => enabledSupermarkets.has(row.sm.n))
+        .filter(row => passesSizeFilter(row.size));
 
       if (rows.length === 0) {
         statusEl.textContent = cachedResults.length === 0
@@ -500,6 +543,7 @@
       .then(() => {
         // Pre-build all Fuse indexes while the user hasn't typed yet
         supermarketsData.forEach(sm => getFuse(sm));
+        buildFilters();
         statusEl.textContent = '';
         searchEl.disabled = false;
         searchEl.placeholder = 'Zoek een product… bijv. "paprika chips"';
