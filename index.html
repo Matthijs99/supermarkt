@@ -469,6 +469,7 @@
     let filterUnit    = null;
     let filterMin     = null;
     let filterMax     = null;
+    let negativeTerms = [];
 
     async function loadData() {
       for (const url of DATA_URLS) {
@@ -570,6 +571,16 @@
 
     function normalizeStr(s) {
       return s.toLowerCase().replace(/[^a-z0-9]/g, '');
+    }
+
+    function parseQuery(raw) {
+      const tokens = raw.trim().split(/\s+/).filter(Boolean);
+      const neg = [], pos = [];
+      for (const t of tokens) {
+        if (t.startsWith('-') && t.length > 1) neg.push(t.slice(1).toLowerCase());
+        else pos.push(t);
+      }
+      return { positiveQuery: pos.join(' '), negativeTerms: neg };
     }
 
     function getGuaranteedMatches(products, query) {
@@ -697,6 +708,7 @@
       for (const row of cachedResults) {
         if (!enabledSupermarkets.has(row.sm.n)) continue;
         if (!passesSizeFilter(row.size)) continue;
+        if (negativeTerms.length > 0 && negativeTerms.some(t => row.product.n.toLowerCase().includes(t))) continue;
         const cur = bestBySm.get(row.sm);
         if (!cur
           || (row.unitPrice && (!cur.unitPrice || row.unitPrice.value < cur.unitPrice.value))
@@ -752,8 +764,12 @@
       const resultsEl = document.getElementById('results');
       const statusEl  = document.getElementById('status');
 
-      if (!query.trim()) {
+      const { positiveQuery, negativeTerms: newNeg } = parseQuery(query);
+      negativeTerms = newNeg;
+
+      if (!positiveQuery) {
         cachedResults = [];
+        currentQuery = '';
         filterUnit = null;
         updateFilterUI(filterUnit);
         resultsEl.innerHTML = '';
@@ -761,10 +777,10 @@
         return;
       }
 
-      if (query !== currentQuery) {
-        currentQuery = query;
+      if (positiveQuery !== currentQuery) {
+        currentQuery = positiveQuery;
         cachedResults = supermarketsData.flatMap(sm => {
-          const products = searchSupermarket(sm, query);
+          const products = searchSupermarket(sm, positiveQuery);
           return products.map(item => {
             const size      = parseSize(item.s);
             const unitPrice = calcUnitPrice(item.p, size);
