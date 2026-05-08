@@ -105,6 +105,26 @@
       margin-top: 1px;
     }
     .cheapest .unit-price { color: #2e7d32; }
+    #filter-wrap { max-width: 480px; margin: 0.6rem auto 0; }
+    #filter-row {
+      display: flex; align-items: center; gap: 0.4rem;
+      font-size: 0.85rem; color: #666;
+    }
+    #filter-row input[type=number] {
+      width: 72px; padding: 0.35rem 0.5rem;
+      border: 1.5px solid #ddd; border-radius: 6px;
+      font-size: 0.85rem; outline: none; transition: border-color 0.15s;
+      -moz-appearance: textfield;
+    }
+    #filter-row input[type=number]:focus { border-color: #4a90e2; }
+    #filter-row input[type=number]::-webkit-outer-spin-button,
+    #filter-row input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
+    #filter-unit-label { color: #888; font-size: 0.8rem; }
+    #filter-clear {
+      background: none; border: none; cursor: pointer;
+      color: #bbb; font-size: 1.1rem; padding: 0 0.2rem; line-height: 1;
+    }
+    #filter-clear:hover { color: #666; }
     @media (max-width: 520px) {
       .result-row {
         grid-template-columns: 1fr auto;
@@ -125,6 +145,16 @@
     <div id="search-wrap">
       <input type="search" id="search" placeholder="Data wordt geladen…" disabled autocomplete="off">
     </div>
+    <div id="filter-wrap" style="display:none">
+      <div id="filter-row">
+        <span>Grootte:</span>
+        <input type="number" id="min-size" placeholder="min" min="0">
+        <span>–</span>
+        <input type="number" id="max-size" placeholder="max" min="0">
+        <span id="filter-unit-label"></span>
+        <button id="filter-clear" aria-label="Wis filter" title="Wis filter">×</button>
+      </div>
+    </div>
   </header>
   <div id="status">Even geduld, data wordt geladen…</div>
   <div id="results"></div>
@@ -138,6 +168,12 @@
     let supermarketsData = null;
     const fuseCache = new Map();
     let debounceTimer = null;
+
+    let currentQuery  = '';
+    let cachedResults = [];
+    let filterUnit    = null;
+    let filterMin     = null;
+    let filterMax     = null;
 
     async function loadData() {
       for (const url of DATA_URLS) {
@@ -259,7 +295,7 @@
       if (!fuseCache.has(supermarket.n)) {
         fuseCache.set(supermarket.n, new Fuse(supermarket.d, {
           keys: ['n'],
-          threshold: 0.4,
+          threshold: 0.2,
           includeScore: true,
           minMatchCharLength: 2,
           useExtendedSearch: true,
@@ -289,30 +325,79 @@
       return best;
     }
 
+    // --- Size filter ---
+
+    function determineFilterUnit(rows) {
+      let g = 0, ml = 0, st = 0;
+      for (const row of rows) {
+        if (row.size?.grams !== undefined) g++;
+        else if (row.size?.ml !== undefined) ml++;
+        else if (row.size?.stuks !== undefined) st++;
+      }
+      if (ml >= g && ml >= st && ml > 0) return 'ml';
+      if (g >= ml && g >= st && g > 0) return 'grams';
+      if (st > 0) return 'stuks';
+      return null;
+    }
+
+    function displayUnit(unit) {
+      if (unit === 'ml')    return 'L';
+      if (unit === 'grams') return 'g';
+      if (unit === 'stuks') return 'stuks';
+      return '';
+    }
+
+    function filterStep(unit) {
+      if (unit === 'ml')    return 0.1;
+      if (unit === 'grams') return 50;
+      return 1;
+    }
+
+    function passesSizeFilter(size) {
+      if (!size || !filterUnit || (filterMin === null && filterMax === null)) return true;
+      let value;
+      if      (filterUnit === 'ml'    && size.ml    !== undefined) value = size.ml / 1000;
+      else if (filterUnit === 'grams' && size.grams !== undefined) value = size.grams;
+      else if (filterUnit === 'stuks' && size.stuks !== undefined) value = size.stuks;
+      else return true;
+      if (filterMin !== null && value < filterMin) return false;
+      if (filterMax !== null && value > filterMax) return false;
+      return true;
+    }
+
+    function updateFilterUI(prevUnit) {
+      const wrap  = document.getElementById('filter-wrap');
+      const label = document.getElementById('filter-unit-label');
+      const minEl = document.getElementById('min-size');
+      const maxEl = document.getElementById('max-size');
+
+      if (!filterUnit) { wrap.style.display = 'none'; return; }
+
+      label.textContent = displayUnit(filterUnit);
+      const step = filterStep(filterUnit);
+      minEl.step = maxEl.step = step;
+
+      if (prevUnit !== filterUnit) {
+        filterMin = filterMax = null;
+        minEl.value = '';
+        maxEl.value = '';
+      }
+
+      wrap.style.display = '';
+    }
+
     // --- Render ---
 
-    function search(query) {
+    function applyFilterAndRender() {
       const resultsEl = document.getElementById('results');
       const statusEl  = document.getElementById('status');
 
-      if (!query.trim()) {
-        resultsEl.innerHTML = '';
-        statusEl.textContent = '';
-        return;
-      }
-
-      const rows = supermarketsData
-        .map(sm => {
-          const product = searchSupermarket(sm, query);
-          if (!product) return null;
-          const size      = parseSize(product.s);
-          const unitPrice = calcUnitPrice(product.p, size);
-          return { sm, product, size, unitPrice };
-        })
-        .filter(Boolean);
+      const rows = cachedResults.filter(row => passesSizeFilter(row.size));
 
       if (rows.length === 0) {
-        statusEl.textContent = 'Geen resultaten gevonden.';
+        statusEl.textContent = cachedResults.length === 0
+          ? 'Geen resultaten gevonden.'
+          : 'Geen resultaten binnen dit formaat.';
         resultsEl.innerHTML = '';
         return;
       }
@@ -333,8 +418,8 @@
         const nameHtml = href
           ? `<a href="${href}" target="_blank" rel="noopener">${row.product.n}</a>`
           : row.product.n;
-        const badge     = isCheapest ? `<span class="cheapest-badge">goedkoopst</span>` : '';
-        const unitHtml  = row.unitPrice
+        const badge    = isCheapest ? `<span class="cheapest-badge">goedkoopst</span>` : '';
+        const unitHtml = row.unitPrice
           ? `<div class="unit-price">${fmt(row.unitPrice.value)}${row.unitPrice.label}</div>`
           : '';
 
@@ -351,6 +436,39 @@
       }).join('');
     }
 
+    function search(query) {
+      const resultsEl = document.getElementById('results');
+      const statusEl  = document.getElementById('status');
+
+      if (!query.trim()) {
+        cachedResults = [];
+        filterUnit = null;
+        updateFilterUI(filterUnit);
+        resultsEl.innerHTML = '';
+        statusEl.textContent = '';
+        return;
+      }
+
+      if (query !== currentQuery) {
+        currentQuery = query;
+        cachedResults = supermarketsData
+          .map(sm => {
+            const product = searchSupermarket(sm, query);
+            if (!product) return null;
+            const size      = parseSize(product.s);
+            const unitPrice = calcUnitPrice(product.p, size);
+            return { sm, product, size, unitPrice };
+          })
+          .filter(Boolean);
+
+        const prevUnit = filterUnit;
+        filterUnit = determineFilterUnit(cachedResults);
+        updateFilterUI(prevUnit);
+      }
+
+      applyFilterAndRender();
+    }
+
     // --- Init ---
 
     const searchEl = document.getElementById('search');
@@ -359,6 +477,21 @@
     searchEl.addEventListener('input', () => {
       clearTimeout(debounceTimer);
       debounceTimer = setTimeout(() => search(searchEl.value), 300);
+    });
+
+    document.getElementById('min-size').addEventListener('input', e => {
+      filterMin = e.target.value !== '' ? parseFloat(e.target.value) : null;
+      applyFilterAndRender();
+    });
+    document.getElementById('max-size').addEventListener('input', e => {
+      filterMax = e.target.value !== '' ? parseFloat(e.target.value) : null;
+      applyFilterAndRender();
+    });
+    document.getElementById('filter-clear').addEventListener('click', () => {
+      filterMin = filterMax = null;
+      document.getElementById('min-size').value = '';
+      document.getElementById('max-size').value = '';
+      applyFilterAndRender();
     });
 
     loadData()
