@@ -917,7 +917,14 @@
 
     searchEl.addEventListener('input', () => {
       clearTimeout(debounceTimer);
-      debounceTimer = setTimeout(() => search(searchEl.value), 300);
+      debounceTimer = setTimeout(() => search(searchEl.value), 600);
+    });
+
+    searchEl.addEventListener('keydown', e => {
+      if (e.key === 'Enter') {
+        clearTimeout(debounceTimer);
+        search(searchEl.value);
+      }
     });
 
     document.getElementById('min-size').addEventListener('input', e => {
