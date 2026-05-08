@@ -6,178 +6,450 @@
   <title>Supermarkt Prijsvergelijker</title>
   <link rel="preconnect" href="https://www.checkjebon.nl">
   <link rel="preload" href="https://www.checkjebon.nl/data/supermarkets.json" as="fetch" crossorigin>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,300..900&family=Epilogue:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/fuse.js@7/dist/fuse.min.js"></script>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --ink:          #181e1a;
+      --green:        #1b3d2c;
+      --green-mid:    #2b5240;
+      --green-tint:   rgba(27,61,44,.08);
+      --cream:        #f8f5ef;
+      --cream-dark:   #ede8df;
+      --orange:       #df5900;
+      --orange-bg:    #fff3ea;
+      --orange-border:#f0a265;
+      --text:         #1a1a18;
+      --text-mid:     #3d3830;
+      --text-soft:    #9b9088;
+      --border:       #e4ddd3;
+      --white:        #ffffff;
+      --r:            10px;
+      --shadow-sm:    0 1px 3px rgba(18,12,4,.07);
+      --shadow:       0 3px 8px rgba(18,12,4,.08), 0 10px 28px rgba(18,12,4,.06);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
     body {
-      font-family: system-ui, -apple-system, sans-serif;
-      background: #f0f2f5;
-      color: #222;
+      font-family: 'Epilogue', system-ui, sans-serif;
+      background: var(--cream);
+      color: var(--text);
       min-height: 100vh;
     }
+
+    /* ── Header ─────────────────────────────────────── */
     header {
-      background: #fff;
-      border-bottom: 1px solid #e0e0e0;
-      padding: 1.5rem 1rem 1.25rem;
+      background: var(--green);
+      padding: 2.75rem 1.5rem 5.5rem;
+      position: relative;
+      overflow: hidden;
+    }
+
+    header::before {
+      content: '';
+      position: absolute;
+      width: 520px; height: 520px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(50,90,65,.55) 0%, transparent 65%);
+      top: -210px; right: -120px;
+      pointer-events: none;
+    }
+
+    header::after {
+      content: '';
+      position: absolute;
+      width: 280px; height: 280px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(50,90,65,.3) 0%, transparent 70%);
+      bottom: 10px; left: -60px;
+      pointer-events: none;
+    }
+
+    .header-content {
+      position: relative;
+      max-width: 600px;
+      margin: 0 auto;
       text-align: center;
     }
-    h1 {
-      font-size: 1.3rem;
+
+    .header-label {
+      font-size: 0.67rem;
       font-weight: 700;
-      color: #111;
-      margin-bottom: 1rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,.36);
+      margin-bottom: 0.9rem;
     }
-    #search-wrap { max-width: 480px; margin: 0 auto; }
+
+    h1 {
+      font-family: 'Fraunces', Georgia, serif;
+      font-size: clamp(2.1rem, 5.5vw, 3.1rem);
+      font-weight: 800;
+      font-variation-settings: 'opsz' 144;
+      color: #fff;
+      line-height: 1.08;
+      letter-spacing: -0.025em;
+      margin-bottom: 0.5rem;
+    }
+
+    .header-tagline {
+      font-size: 0.875rem;
+      color: rgba(255,255,255,.36);
+      margin-bottom: 2.1rem;
+    }
+
+    /* ── Search bar ──────────────────────────────────── */
+    #search-wrap {
+      position: relative;
+      max-width: 440px;
+      margin: 0 auto;
+    }
+
+    .search-icon {
+      position: absolute;
+      left: 0.95rem;
+      top: 50%;
+      transform: translateY(-50%);
+      pointer-events: none;
+      color: rgba(255,255,255,.32);
+      transition: color .2s;
+    }
+
+    #search-wrap:focus-within .search-icon { color: rgba(255,255,255,.6); }
+
     #search {
       width: 100%;
-      padding: 0.75rem 1rem;
-      font-size: 1rem;
-      border: 2px solid #ddd;
+      padding: .85rem 1.1rem .85rem 2.65rem;
+      font-family: 'Epilogue', sans-serif;
+      font-size: .95rem;
+      font-weight: 500;
+      background: rgba(255,255,255,.1);
+      color: #fff;
+      border: 1.5px solid rgba(255,255,255,.15);
+      border-radius: 999px;
+      outline: none;
+      transition: background .2s, border-color .2s, box-shadow .2s;
+      backdrop-filter: blur(8px);
+    }
+
+    #search::placeholder       { color: rgba(255,255,255,.38); }
+    #search:focus {
+      background: rgba(255,255,255,.16);
+      border-color: rgba(255,255,255,.3);
+      box-shadow: 0 0 0 4px rgba(255,255,255,.07);
+    }
+    #search:disabled {
+      opacity: .55;
+      cursor: not-allowed;
+    }
+    #search:disabled::placeholder {
+      animation: loading-pulse 1.8s ease-in-out infinite;
+    }
+
+    @keyframes loading-pulse {
+      0%, 100% { opacity: .38; }
+      50%       { opacity: .7;  }
+    }
+
+    /* ── Size filter ─────────────────────────────────── */
+    #filter-wrap {
+      max-width: 440px;
+      margin: 0.75rem auto 0;
+    }
+
+    #filter-row {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      font-size: 0.8rem;
+      color: rgba(255,255,255,.5);
+      justify-content: center;
+    }
+
+    #filter-row input[type=number] {
+      width: 68px;
+      padding: 0.4rem 0.6rem;
+      font-family: 'Epilogue', sans-serif;
+      font-size: 0.8rem;
+      background: rgba(255,255,255,.1);
+      color: #fff;
+      border: 1.5px solid rgba(255,255,255,.15);
       border-radius: 8px;
       outline: none;
-      transition: border-color 0.15s;
-      background: #fff;
+      transition: border-color .2s, background .2s;
+      text-align: center;
+      -moz-appearance: textfield;
     }
-    #search:focus { border-color: #4a90e2; }
-    #search:disabled { background: #f5f5f5; color: #aaa; }
+
+    #filter-row input[type=number]::placeholder { color: rgba(255,255,255,.3); }
+    #filter-row input[type=number]:focus {
+      background: rgba(255,255,255,.16);
+      border-color: rgba(255,255,255,.3);
+    }
+    #filter-row input[type=number]::-webkit-outer-spin-button,
+    #filter-row input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
+
+    #filter-unit-label { color: rgba(255,255,255,.38); font-size: 0.75rem; }
+
+    #filter-clear {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: rgba(255,255,255,.3);
+      font-size: 1.1rem;
+      padding: 0 0.2rem;
+      line-height: 1;
+      transition: color .15s;
+    }
+    #filter-clear:hover { color: rgba(255,255,255,.7); }
+
+    /* ── Supermarket checkboxes ───────────────────────── */
+    #sm-filter-wrap {
+      max-width: 600px;
+      margin: 0.85rem auto 0;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem 0.5rem;
+      justify-content: center;
+    }
+
+    #sm-filter-wrap label {
+      font-size: 0.68rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,.45);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+      background: rgba(255,255,255,.07);
+      padding: 0.25rem 0.6rem;
+      border-radius: 5px;
+      transition: color .15s, background .15s;
+    }
+
+    #sm-filter-wrap label:hover {
+      color: rgba(255,255,255,.8);
+      background: rgba(255,255,255,.12);
+    }
+
+    #sm-filter-wrap input[type="checkbox"] {
+      cursor: pointer;
+      accent-color: var(--orange);
+    }
+
+    /* Wave divider at bottom of header */
+    .header-wave {
+      position: absolute;
+      bottom: -1px;
+      left: 0; right: 0;
+      height: 52px;
+      overflow: hidden;
+    }
+
+    .header-wave svg {
+      display: block;
+      width: 100%; height: 100%;
+    }
+
+    /* ── Status / empty state ────────────────────────── */
     #status {
       text-align: center;
-      padding: 2.5rem 1rem;
-      color: #888;
-      font-size: 0.9rem;
+      padding: 3.5rem 1rem;
+      color: var(--text-soft);
+      font-size: .875rem;
+      line-height: 1.6;
     }
+
+    /* ── Results ─────────────────────────────────────── */
     #results {
       max-width: 760px;
-      margin: 1.25rem auto 2rem;
+      margin: 1.25rem auto 3rem;
       padding: 0 1rem;
     }
+
     .result-row {
-      background: #fff;
-      border: 1px solid #e5e5e5;
-      border-radius: 8px;
-      padding: 0.8rem 1rem;
-      margin-bottom: 0.5rem;
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: .9rem 1.1rem;
+      margin-bottom: .5rem;
       display: grid;
-      grid-template-columns: 150px 1fr auto;
-      gap: 0.25rem 1rem;
+      grid-template-columns: auto 1fr auto;
+      gap: 0 1rem;
       align-items: center;
+      box-shadow: var(--shadow-sm);
+      animation: card-in .32s ease both;
+      transition: box-shadow .15s, transform .15s;
     }
+
+    .result-row:hover {
+      box-shadow: var(--shadow);
+      transform: translateY(-1px);
+    }
+
     .result-row.cheapest {
-      border-color: #4caf50;
-      background: #f1faf1;
+      background: var(--orange-bg);
+      border-color: var(--orange-border);
+      border-left: 3px solid var(--orange);
     }
+
+    @keyframes card-in {
+      from { opacity: 0; transform: translateY(6px); }
+      to   { opacity: 1; transform: translateY(0);   }
+    }
+
+    .result-row:nth-child(1)  { animation-delay:   0ms }
+    .result-row:nth-child(2)  { animation-delay:  48ms }
+    .result-row:nth-child(3)  { animation-delay:  96ms }
+    .result-row:nth-child(4)  { animation-delay: 144ms }
+    .result-row:nth-child(5)  { animation-delay: 192ms }
+    .result-row:nth-child(6)  { animation-delay: 240ms }
+    .result-row:nth-child(7)  { animation-delay: 288ms }
+    .result-row:nth-child(8)  { animation-delay: 336ms }
+    .result-row:nth-child(n+9){ animation-delay: 380ms }
+
+    /* Supermarket chip */
     .supermarket-name {
-      font-weight: 600;
-      font-size: 0.85rem;
-      color: #444;
+      display: inline-block;
+      font-size: .68rem;
+      font-weight: 700;
+      letter-spacing: .055em;
+      text-transform: uppercase;
+      color: var(--green-mid);
+      background: var(--green-tint);
+      padding: .22rem .55rem;
+      border-radius: 5px;
+      white-space: nowrap;
     }
+
+    .cheapest .supermarket-name {
+      color: var(--orange);
+      background: rgba(223,89,0,.09);
+    }
+
+    /* Product name */
     .product-name {
-      font-size: 0.9rem;
-      color: #333;
-      line-height: 1.4;
+      font-size: .875rem;
+      color: var(--text-mid);
+      line-height: 1.45;
     }
+
     .product-name a {
       color: inherit;
       text-decoration: none;
     }
-    .product-name a:hover { text-decoration: underline; color: #4a90e2; }
+
+    .product-name a:hover {
+      color: var(--green);
+      text-decoration: underline;
+      text-decoration-color: var(--border);
+      text-underline-offset: 3px;
+    }
+
+    /* Cheapest badge */
     .cheapest-badge {
       display: inline-block;
-      font-size: 0.65rem;
-      font-weight: 700;
-      background: #4caf50;
-      color: #fff;
-      padding: 1px 5px;
-      border-radius: 3px;
-      margin-left: 5px;
-      vertical-align: middle;
+      font-size: .6rem;
+      font-weight: 800;
+      letter-spacing: .07em;
       text-transform: uppercase;
-      letter-spacing: 0.03em;
+      background: var(--orange);
+      color: #fff;
+      padding: 2px 7px;
+      border-radius: 999px;
+      margin-left: 7px;
+      vertical-align: middle;
     }
+
+    /* Prices column — unit price is primary, regular price is secondary */
     .prices {
       text-align: right;
       white-space: nowrap;
     }
-    .price { font-weight: 400; font-size: 0.78rem; color: #999; margin-top: 1px; }
-    .size { color: #999; font-size: 0.78rem; margin-top: 1px; }
+
     .unit-price {
-      font-size: 1rem;
+      font-family: 'Fraunces', Georgia, serif;
+      font-size: 1.05rem;
       font-weight: 700;
-      color: #4a90e2;
+      font-variation-settings: 'opsz' 40;
+      color: var(--ink);
+      letter-spacing: -.01em;
     }
-    .cheapest .unit-price { color: #2e7d32; }
-    #filter-wrap { max-width: 480px; margin: 0.6rem auto 0; }
-    #filter-row {
-      display: flex; align-items: center; gap: 0.4rem;
-      font-size: 0.85rem; color: #666;
+
+    .cheapest .unit-price { color: var(--orange); }
+
+    .price {
+      font-size: .72rem;
+      font-weight: 400;
+      color: var(--text-soft);
+      margin-top: 1px;
     }
-    #filter-row input[type=number] {
-      width: 72px; padding: 0.35rem 0.5rem;
-      border: 1.5px solid #ddd; border-radius: 6px;
-      font-size: 0.85rem; outline: none; transition: border-color 0.15s;
-      -moz-appearance: textfield;
+
+    .cheapest .price { color: rgba(223,89,0,.65); }
+
+    .size {
+      font-size: .7rem;
+      color: var(--text-soft);
+      margin-top: 1px;
     }
-    #filter-row input[type=number]:focus { border-color: #4a90e2; }
-    #filter-row input[type=number]::-webkit-outer-spin-button,
-    #filter-row input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
-    #filter-unit-label { color: #888; font-size: 0.8rem; }
-    #filter-clear {
-      background: none; border: none; cursor: pointer;
-      color: #bbb; font-size: 1.1rem; padding: 0 0.2rem; line-height: 1;
-    }
-    #filter-clear:hover { color: #666; }
-    #sm-filter-wrap {
-      max-width: 480px;
-      margin: 0.75rem auto 0;
-      display: flex;
-      flex-wrap: wrap;
-      gap: 0.4rem 0.75rem;
-      justify-content: center;
-    }
-    #sm-filter-wrap label {
-      font-size: 0.8rem;
-      color: #555;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 0.25rem;
-    }
-    #sm-filter-wrap input[type="checkbox"] {
-      cursor: pointer;
-      accent-color: #4a90e2;
-    }
+
+    /* ── Mobile ──────────────────────────────────────── */
     @media (max-width: 520px) {
+      header { padding: 2rem 1.25rem 4.5rem; }
+
       .result-row {
         grid-template-columns: 1fr auto;
-        gap: 0.2rem 0.75rem;
+        gap: .3rem .75rem;
       }
+
       .supermarket-name {
         grid-column: 1 / -1;
-        margin-bottom: 0.1rem;
-        color: #888;
-        font-size: 0.78rem;
+        margin-bottom: .1rem;
       }
     }
   </style>
 </head>
 <body>
+
   <header>
-    <h1>Supermarkt Prijsvergelijker</h1>
-    <div id="search-wrap">
-      <input type="search" id="search" placeholder="Data wordt geladen…" disabled autocomplete="off">
-    </div>
-    <div id="filter-wrap" style="display:none">
-      <div id="filter-row">
-        <span>Grootte:</span>
-        <input type="number" id="min-size" placeholder="min" min="0">
-        <span>–</span>
-        <input type="number" id="max-size" placeholder="max" min="0">
-        <span id="filter-unit-label"></span>
-        <button id="filter-clear" aria-label="Wis filter" title="Wis filter">×</button>
+    <div class="header-content">
+      <p class="header-label">Prijsvergelijker</p>
+      <h1>Supermarkt<br>Prijsvergelijker</h1>
+      <p class="header-tagline">Vind altijd de beste prijs per eenheid</p>
+      <div id="search-wrap">
+        <svg class="search-icon" width="17" height="17" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+             stroke-linejoin="round" aria-hidden="true">
+          <circle cx="11" cy="11" r="8"/>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+        <input type="search" id="search" placeholder="Data wordt geladen…" disabled autocomplete="off">
       </div>
+      <div id="filter-wrap" style="display:none">
+        <div id="filter-row">
+          <span>Grootte:</span>
+          <input type="number" id="min-size" placeholder="min" min="0">
+          <span>–</span>
+          <input type="number" id="max-size" placeholder="max" min="0">
+          <span id="filter-unit-label"></span>
+          <button id="filter-clear" aria-label="Wis filter" title="Wis filter">×</button>
+        </div>
+      </div>
+      <div id="sm-filter-wrap"></div>
     </div>
-    <div id="sm-filter-wrap"></div>
+    <div class="header-wave">
+      <svg viewBox="0 0 1440 52" preserveAspectRatio="none" aria-hidden="true">
+        <path d="M0,28 C240,52 480,4 720,26 C960,48 1200,12 1440,28 L1440,52 L0,52 Z"
+              fill="#f8f5ef"/>
+      </svg>
+    </div>
   </header>
+
   <div id="status">Even geduld, data wordt geladen…</div>
   <div id="results"></div>
 
