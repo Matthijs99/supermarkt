@@ -27,6 +27,46 @@
         <input type="search" id="search" placeholder="Data wordt geladen…" disabled autocomplete="off">
       </div>
       <div id="filter-bar">
+        <div id="sm-filter-wrap" style="display:none">
+          <span class="filter-prefix">Winkels:</span>
+          <div class="sm-popover-anchor">
+            <button type="button" id="sm-trigger" class="sm-trigger"
+                    aria-haspopup="true" aria-expanded="false"
+                    aria-controls="sm-popover">
+              <span id="sm-trigger-count">0 / 0</span>
+              <svg class="sm-trigger-caret" width="10" height="10" viewBox="0 0 24 24"
+                   fill="none" stroke="currentColor" stroke-width="3"
+                   stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </button>
+            <div id="sm-popover" class="sm-popover" role="dialog"
+                 aria-label="Winkels selecteren" hidden>
+              <ul id="sm-list" class="sm-list"></ul>
+              <div class="sm-actions">
+                <button type="button" class="sm-action" data-action="all">Alles aan</button>
+                <button type="button" class="sm-action" data-action="none">Geen</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div id="strict-wrap" style="display:none">
+          <button type="button" id="strict-toggle" class="switch" role="switch"
+                  aria-checked="true" aria-label="Exacte match"
+                  onclick="toggleStrictMode()">
+            <span class="switch-track"><span class="switch-thumb"></span></span>
+            <span class="switch-label">Exacte match</span>
+          </button>
+        </div>
+        <div id="hide-unlabeled-wrap" style="display:none">
+          <button type="button" id="hide-unlabeled-toggle" class="switch" role="switch"
+                  aria-checked="false" aria-label="Verberg zonder eenheid"
+                  onclick="toggleHideUnlabeled()">
+            <span class="switch-track"><span class="switch-thumb"></span></span>
+            <span class="switch-label">Verberg zonder eenheid</span>
+          </button>
+        </div>
+        <div id="unit-filter-wrap" style="display:none"></div>
         <div id="filter-wrap" style="display:none">
           <div id="filter-row">
             <div id="filter-pill">
@@ -52,20 +92,6 @@
             </div>
           </div>
         </div>
-        <div id="unit-filter-wrap" style="display:none"></div>
-        <div id="strict-wrap" style="display:none">
-          <button type="button" id="strict-toggle" class="sm-pill active"
-                  aria-pressed="true" onclick="toggleStrictMode()">
-            Exacte match
-          </button>
-        </div>
-        <div id="hide-unlabeled-wrap" style="display:none">
-          <button type="button" id="hide-unlabeled-toggle" class="sm-pill"
-                  aria-pressed="false" onclick="toggleHideUnlabeled()">
-            Verberg zonder eenheid
-          </button>
-        </div>
-        <div id="sm-filter-wrap"></div>
       </div>
     </div>
     <div class="header-wave">

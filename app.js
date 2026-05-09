@@ -17,6 +17,8 @@ let negativeTerms     = [];
 let strictMode        = true;
 let hideUnlabeled     = false;
 let currentStrictMode = true;
+let dismissedProducts = new Set();
+let renderedRows      = new Map(); // supermarket.n -> HTMLElement
 
 async function loadData() {
   for (const url of DATA_URLS) {
@@ -279,53 +281,125 @@ function buildUnitFilter(unitTypes) {
   prefix.textContent = 'Eenheid:';
   wrap.appendChild(prefix);
 
+  const seg = document.createElement('div');
+  seg.className = 'segmented';
+  seg.setAttribute('role', 'radiogroup');
+  seg.setAttribute('aria-label', 'Eenheid');
+  wrap.appendChild(seg);
+
   for (const unit of ['grams', 'ml', 'stuks']) {
     if (!unitTypes.has(unit)) continue;
     const isActive = unit === filterUnit;
     const btn = document.createElement('button');
     btn.type = 'button';
-    btn.className = 'sm-pill' + (isActive ? ' active' : '');
+    btn.className = 'seg-btn';
     btn.setAttribute('aria-pressed', String(isActive));
     btn.textContent = UNIT_LABELS[unit];
     btn.addEventListener('click', () => {
       if (filterUnit === unit) return;
       const prev = filterUnit;
       filterUnit = unit;
-      wrap.querySelectorAll('.sm-pill').forEach(b => {
-        const active = b === btn;
-        b.setAttribute('aria-pressed', String(active));
-        b.classList.toggle('active', active);
+      seg.querySelectorAll('.seg-btn').forEach(b => {
+        b.setAttribute('aria-pressed', String(b === btn));
       });
       updateFilterUI(prev);
       applyFilterAndRender();
     });
-    wrap.appendChild(btn);
+    seg.appendChild(btn);
   }
 
   wrap.style.display = '';
 }
 
+function updateSmTriggerCount() {
+  const total = supermarketsData.length;
+  const enabled = enabledSupermarkets.size;
+  document.getElementById('sm-trigger-count').textContent = `${enabled} / ${total}`;
+}
+
+function setSmPopoverOpen(open) {
+  const trigger = document.getElementById('sm-trigger');
+  const popover = document.getElementById('sm-popover');
+  trigger.setAttribute('aria-expanded', String(open));
+  if (open) {
+    const rect = trigger.getBoundingClientRect();
+    popover.style.top = `${rect.bottom + 8}px`;
+    popover.style.left = `${rect.left + rect.width / 2}px`;
+    popover.hidden = false;
+  } else {
+    popover.hidden = true;
+  }
+}
+
 function buildFilters() {
-  const wrap = document.getElementById('sm-filter-wrap');
+  const list = document.getElementById('sm-list');
+  list.innerHTML = '';
   supermarketsData.forEach(sm => {
     enabledSupermarkets.add(sm.n);
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'sm-pill active';
-    btn.setAttribute('aria-pressed', 'true');
-    btn.textContent = (sm.c || sm.n).replace(/\s*\(via[^)]*\)/i, '');
-    btn.addEventListener('click', () => {
-      const wasActive = btn.getAttribute('aria-pressed') === 'true';
-      const nowActive = !wasActive;
-      btn.setAttribute('aria-pressed', String(nowActive));
-      btn.classList.toggle('active', nowActive);
-      if (nowActive) enabledSupermarkets.add(sm.n);
+    const li = document.createElement('li');
+    const label = document.createElement('label');
+    label.className = 'sm-option';
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.checked = true;
+    cb.addEventListener('change', () => {
+      if (cb.checked) enabledSupermarkets.add(sm.n);
       else enabledSupermarkets.delete(sm.n);
+      updateSmTriggerCount();
       applyFilterAndRender();
     });
-    wrap.appendChild(btn);
+    const span = document.createElement('span');
+    span.textContent = (sm.c || sm.n).replace(/\s*\(via[^)]*\)/i, '');
+    label.appendChild(cb);
+    label.appendChild(span);
+    li.appendChild(label);
+    list.appendChild(li);
   });
-  wrap.style.display = 'none';
+  updateSmTriggerCount();
+
+  const trigger = document.getElementById('sm-trigger');
+  const popover = document.getElementById('sm-popover');
+
+  trigger.addEventListener('click', e => {
+    e.stopPropagation();
+    setSmPopoverOpen(popover.hidden);
+  });
+
+  document.addEventListener('click', e => {
+    if (popover.hidden) return;
+    if (!popover.contains(e.target) && e.target !== trigger) {
+      setSmPopoverOpen(false);
+    }
+  });
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape' && !popover.hidden) {
+      setSmPopoverOpen(false);
+      trigger.focus();
+    }
+  });
+
+  window.addEventListener('scroll', () => {
+    if (!popover.hidden) setSmPopoverOpen(false);
+  }, { passive: true });
+
+  popover.querySelector('[data-action="all"]').addEventListener('click', () => {
+    list.querySelectorAll('input[type=checkbox]').forEach(cb => {
+      if (!cb.checked) cb.checked = true;
+    });
+    supermarketsData.forEach(sm => enabledSupermarkets.add(sm.n));
+    updateSmTriggerCount();
+    applyFilterAndRender();
+  });
+
+  popover.querySelector('[data-action="none"]').addEventListener('click', () => {
+    list.querySelectorAll('input[type=checkbox]').forEach(cb => {
+      cb.checked = false;
+    });
+    enabledSupermarkets.clear();
+    updateSmTriggerCount();
+    applyFilterAndRender();
+  });
 }
 
 // --- Render ---
@@ -337,6 +411,7 @@ function applyFilterAndRender() {
   const bestBySm = new Map();
   let unlabeledHiddenCount = 0;
   for (const row of cachedResults) {
+    if (dismissedProducts.has(row.product)) continue;
     if (!enabledSupermarkets.has(row.sm.n)) continue;
     if (filterUnit) {
       const ut = row.size?.grams !== undefined ? 'grams'
@@ -367,6 +442,7 @@ function applyFilterAndRender() {
           : 'Geen resultaten binnen dit formaat.';
     statusEl.textContent = hint;
     resultsEl.innerHTML = '';
+    renderedRows.clear();
     return;
   }
 
@@ -379,29 +455,55 @@ function applyFilterAndRender() {
 
   statusEl.textContent = '';
   const cheapest = rows[0];
+  const newKeys = new Set();
 
-  resultsEl.innerHTML = rows.map(row => {
+  for (const row of rows) {
+    newKeys.add(row.sm.n);
+    let el = renderedRows.get(row.sm.n);
+    let isNew = false;
+    if (!el) {
+      el = document.createElement('div');
+      isNew = true;
+      renderedRows.set(row.sm.n, el);
+    }
     const isCheapest = row === cheapest;
-    const href = (row.sm.u && row.product.l) ? row.sm.u + row.product.l : null;
-    const nameHtml = href
-      ? `<a href="${href}" target="_blank" rel="noopener">${row.product.n}</a>`
-      : row.product.n;
-    const badge    = isCheapest ? `<span class="cheapest-badge">goedkoopst</span>` : '';
-    const unitHtml = row.unitPrice
-      ? `<div class="unit-price">${fmt(row.unitPrice.value)}${row.unitPrice.label}</div>`
-      : `<div class="unit-price unit-price-missing">geen eenheid</div>`;
+    el.className = 'result-row'
+      + (isCheapest ? ' cheapest' : '')
+      + (isNew ? ' entering' : '');
+    el.innerHTML = buildRowInnerHtml(row, isCheapest);
+    if (isNew) {
+      el.addEventListener('animationend', () => el.classList.remove('entering'), { once: true });
+    }
+    resultsEl.appendChild(el); // moves existing nodes; preserves animation state
+  }
 
-    return `
-      <div class="result-row${isCheapest ? ' cheapest' : ''}">
+  for (const [smName, el] of renderedRows) {
+    if (!newKeys.has(smName)) {
+      el.remove();
+      renderedRows.delete(smName);
+    }
+  }
+}
+
+function buildRowInnerHtml(row, isCheapest) {
+  const href = (row.sm.u && row.product.l) ? row.sm.u + row.product.l : null;
+  const nameHtml = href
+    ? `<a href="${href}" target="_blank" rel="noopener">${row.product.n}</a>`
+    : row.product.n;
+  const badge    = isCheapest ? `<span class="cheapest-badge">goedkoopst</span>` : '';
+  const unitHtml = row.unitPrice
+    ? `<div class="unit-price">${fmt(row.unitPrice.value)}${row.unitPrice.label}</div>`
+    : `<div class="unit-price unit-price-missing">geen eenheid</div>`;
+
+  return `
+        <button class="dismiss-btn" data-idx="${row._idx}" aria-label="Dit resultaat overslaan" title="Dit resultaat overslaan">×</button>
         <div class="supermarket-name">${row.sm.c || row.sm.n}</div>
         <div class="product-name">${nameHtml}${badge}</div>
         <div class="prices">
           ${unitHtml}
           <div class="price">${fmt(row.product.p)}</div>
           <div class="size">${row.product.s || ''}</div>
-        </div>
-      </div>`;
-  }).join('');
+        </div>`;
 }
 
 function search(query) {
@@ -413,6 +515,7 @@ function search(query) {
 
   if (!positiveQuery) {
     cachedResults = [];
+    dismissedProducts = new Set();
     currentQuery = '';
     currentStrictMode = strictMode;
     filterUnit = null;
@@ -422,11 +525,13 @@ function search(query) {
     document.getElementById('strict-wrap').style.display = 'none';
     document.getElementById('hide-unlabeled-wrap').style.display = 'none';
     resultsEl.innerHTML = '';
+    renderedRows.clear();
     statusEl.textContent = '';
     return;
   }
 
   if (positiveQuery !== currentQuery || strictMode !== currentStrictMode) {
+    if (positiveQuery !== currentQuery) dismissedProducts = new Set();
     currentQuery = positiveQuery;
     currentStrictMode = strictMode;
     cachedResults = supermarketsData.flatMap(sm => {
@@ -437,6 +542,7 @@ function search(query) {
         return { sm, product: item, size, unitPrice };
       });
     });
+    cachedResults.forEach((row, i) => row._idx = i);
 
     const prevUnit = filterUnit;
     const newUnitTypes = getUnitTypes(cachedResults);
@@ -455,17 +561,15 @@ function search(query) {
 
 function toggleStrictMode() {
   strictMode = !strictMode;
-  const btn = document.getElementById('strict-toggle');
-  btn.setAttribute('aria-pressed', String(strictMode));
-  btn.classList.toggle('active', strictMode);
+  document.getElementById('strict-toggle')
+          .setAttribute('aria-checked', String(strictMode));
   if (currentQuery) search(searchEl.value);
 }
 
 function toggleHideUnlabeled() {
   hideUnlabeled = !hideUnlabeled;
-  const btn = document.getElementById('hide-unlabeled-toggle');
-  btn.setAttribute('aria-pressed', String(hideUnlabeled));
-  btn.classList.toggle('active', hideUnlabeled);
+  document.getElementById('hide-unlabeled-toggle')
+          .setAttribute('aria-checked', String(hideUnlabeled));
   applyFilterAndRender();
 }
 
@@ -498,6 +602,16 @@ document.getElementById('filter-clear').addEventListener('click', () => {
   filterMin = filterMax = null;
   document.getElementById('min-size').value = '';
   document.getElementById('max-size').value = '';
+  applyFilterAndRender();
+});
+
+document.getElementById('results').addEventListener('click', e => {
+  const btn = e.target.closest('.dismiss-btn');
+  if (!btn) return;
+  const idx = +btn.dataset.idx;
+  const row = cachedResults[idx];
+  if (!row) return;
+  dismissedProducts.add(row.product);
   applyFilterAndRender();
 });
 
