@@ -82,7 +82,7 @@ function parseSize(s) {
   }
 
   // "N x M unit" (multipacks)
-  m = str.match(/^(\d+(?:[.,]\d+)?)\s*[xX×]\s*(\d+(?:[.,]\d+)?)\s*(g|kg|mg|ml|cl|dl|l|gram|liter)\b/i);
+  m = str.match(/(\d+(?:[.,]\d+)?)\s*[xX×]\s*(\d+(?:[.,]\d+)?)\s*(g|kg|mg|ml|cl|dl|l|gram|liter)\b/i);
   if (m) {
     const total = parseNum(m[1]) * parseNum(m[2]), u = m[3];
     const g = weightToGrams(total, u);
