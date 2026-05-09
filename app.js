@@ -124,10 +124,14 @@ function escapeRegex(s) {
 }
 
 function generateSearchForms(word) {
-  const forms = new Set([word, word + 's', word + 'en']);
+  const forms = new Set([word, word + 'en']);
+  if (!word.endsWith('s')) forms.add(word + 's');
   // Double-vowel shortening: peer→peren, banaan→bananen, tomaat→tomaten
   const m = word.match(/^(.+?)(aa|ee|oo|uu)([bcdfghjklmnpqrstvwxyz])$/i);
   if (m) forms.add(m[1] + m[2][0] + m[3] + 'en');
+  // Consonant-doubling: kip→kippen, kat→katten, ham→hammen, vis→vissen
+  const cv = word.match(/^(.+[aeiou])([bcdfghjklmnpqrstvwxyz])$/i);
+  if (cv && cv[1].length >= 2) forms.add(cv[1] + cv[2] + cv[2] + 'en');
   return [...forms];
 }
 
@@ -443,7 +447,7 @@ function toggleStrictMode() {
   const btn = document.getElementById('strict-toggle');
   btn.setAttribute('aria-pressed', String(strictMode));
   btn.classList.toggle('active', strictMode);
-  if (currentQuery) search(currentQuery);
+  if (currentQuery) search(searchEl.value);
 }
 
 // --- Init ---
