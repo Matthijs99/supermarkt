@@ -15,7 +15,7 @@ let filterMin         = null;
 let filterMax         = null;
 let negativeTerms     = [];
 let strictMode        = true;
-let hideUnlabeled     = false;
+let hideUnlabeled     = true;
 let currentStrictMode = true;
 let dismissedProducts = new Set();
 let renderedRows      = new Map(); // supermarket.n -> HTMLElement
@@ -275,11 +275,6 @@ function buildUnitFilter(unitTypes) {
   wrap.innerHTML = '';
 
   if (unitTypes.size < 2) { wrap.style.display = 'none'; return; }
-
-  const prefix = document.createElement('span');
-  prefix.className = 'filter-prefix';
-  prefix.textContent = 'Eenheid:';
-  wrap.appendChild(prefix);
 
   const seg = document.createElement('div');
   seg.className = 'segmented';
