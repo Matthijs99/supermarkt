@@ -8,12 +8,14 @@ const fuseCache = new Map();
 let debounceTimer = null;
 const enabledSupermarkets = new Set();
 
-let currentQuery  = '';
-let cachedResults = [];
-let filterUnit    = null;
-let filterMin     = null;
-let filterMax     = null;
-let negativeTerms = [];
+let currentQuery      = '';
+let cachedResults     = [];
+let filterUnit        = null;
+let filterMin         = null;
+let filterMax         = null;
+let negativeTerms     = [];
+let strictMode        = true;
+let currentStrictMode = true;
 
 async function loadData() {
   for (const url of DATA_URLS) {
@@ -117,6 +119,25 @@ function normalizeStr(s) {
   return s.toLowerCase().replace(/[^a-z0-9]/g, '');
 }
 
+function escapeRegex(s) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function generateSearchForms(word) {
+  const forms = new Set([word, word + 's', word + 'en']);
+  // Double-vowel shortening: peer→peren, banaan→bananen, tomaat→tomaten
+  const m = word.match(/^(.+?)(aa|ee|oo|uu)([bcdfghjklmnpqrstvwxyz])$/i);
+  if (m) forms.add(m[1] + m[2][0] + m[3] + 'en');
+  return [...forms];
+}
+
+function strictWordMatch(productName, queryWords) {
+  return queryWords.every(w => {
+    const forms = generateSearchForms(w).map(escapeRegex).join('|');
+    return new RegExp('\\b(?:' + forms + ')\\b', 'i').test(productName);
+  });
+}
+
 function parseQuery(raw) {
   const tokens = raw.trim().split(/\s+/).filter(Boolean);
   const neg = [], pos = [];
@@ -131,6 +152,7 @@ function getGuaranteedMatches(products, query) {
   const words  = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
   const concat = normalizeStr(query);
   return products.filter(p => {
+    if (strictMode) return strictWordMatch(p.n, words);
     const name     = p.n.toLowerCase();
     const nameNorm = normalizeStr(p.n);
     const allWords = words.every(w => name.includes(w));
@@ -155,8 +177,10 @@ function getFuse(supermarket) {
 }
 
 function searchSupermarket(supermarket, query) {
+  const words      = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
   const guaranteed = getGuaranteedMatches(supermarket.d, query);
-  const fuzzy      = getFuse(supermarket).search(query).map(r => r.item);
+  let fuzzy = getFuse(supermarket).search(query).map(r => r.item);
+  if (strictMode) fuzzy = fuzzy.filter(item => strictWordMatch(item.n, words));
   const seen = new Set(guaranteed);
   for (const item of fuzzy) seen.add(item);
   return [...seen];
@@ -323,9 +347,12 @@ function applyFilterAndRender() {
   const rows = [...bestBySm.values()];
 
   if (rows.length === 0) {
-    statusEl.textContent = cachedResults.length === 0
-      ? 'Geen resultaten gevonden.'
-      : 'Geen resultaten binnen dit formaat.';
+    const hint = strictMode && cachedResults.length === 0
+      ? 'Geen exacte resultaten. Zet "Exacte match" uit voor meer resultaten.'
+      : cachedResults.length === 0
+        ? 'Geen resultaten gevonden.'
+        : 'Geen resultaten binnen dit formaat.';
+    statusEl.textContent = hint;
     resultsEl.innerHTML = '';
     return;
   }
@@ -374,17 +401,20 @@ function search(query) {
   if (!positiveQuery) {
     cachedResults = [];
     currentQuery = '';
+    currentStrictMode = strictMode;
     filterUnit = null;
     updateFilterUI(filterUnit);
     buildUnitFilter(new Set());
     document.getElementById('sm-filter-wrap').style.display = 'none';
+    document.getElementById('strict-wrap').style.display = 'none';
     resultsEl.innerHTML = '';
     statusEl.textContent = '';
     return;
   }
 
-  if (positiveQuery !== currentQuery) {
+  if (positiveQuery !== currentQuery || strictMode !== currentStrictMode) {
     currentQuery = positiveQuery;
+    currentStrictMode = strictMode;
     cachedResults = supermarketsData.flatMap(sm => {
       const products = searchSupermarket(sm, positiveQuery);
       return products.map(item => {
@@ -402,9 +432,18 @@ function search(query) {
     updateFilterUI(prevUnit);
     buildUnitFilter(newUnitTypes);
     document.getElementById('sm-filter-wrap').style.display = '';
+    document.getElementById('strict-wrap').style.display = '';
   }
 
   applyFilterAndRender();
+}
+
+function toggleStrictMode() {
+  strictMode = !strictMode;
+  const btn = document.getElementById('strict-toggle');
+  btn.setAttribute('aria-pressed', String(strictMode));
+  btn.classList.toggle('active', strictMode);
+  if (currentQuery) search(currentQuery);
 }
 
 // --- Init ---
