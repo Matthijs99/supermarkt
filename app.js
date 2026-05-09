@@ -15,6 +15,7 @@ let filterMin         = null;
 let filterMax         = null;
 let negativeTerms     = [];
 let strictMode        = true;
+let hideUnlabeled     = false;
 let currentStrictMode = true;
 
 async function loadData() {
@@ -415,6 +416,7 @@ function search(query) {
     buildUnitFilter(new Set());
     document.getElementById('sm-filter-wrap').style.display = 'none';
     document.getElementById('strict-wrap').style.display = 'none';
+    document.getElementById('hide-unlabeled-wrap').style.display = 'none';
     resultsEl.innerHTML = '';
     statusEl.textContent = '';
     return;
@@ -441,6 +443,7 @@ function search(query) {
     buildUnitFilter(newUnitTypes);
     document.getElementById('sm-filter-wrap').style.display = '';
     document.getElementById('strict-wrap').style.display = '';
+    document.getElementById('hide-unlabeled-wrap').style.display = '';
   }
 
   applyFilterAndRender();
@@ -452,6 +455,14 @@ function toggleStrictMode() {
   btn.setAttribute('aria-pressed', String(strictMode));
   btn.classList.toggle('active', strictMode);
   if (currentQuery) search(searchEl.value);
+}
+
+function toggleHideUnlabeled() {
+  hideUnlabeled = !hideUnlabeled;
+  const btn = document.getElementById('hide-unlabeled-toggle');
+  btn.setAttribute('aria-pressed', String(hideUnlabeled));
+  btn.classList.toggle('active', hideUnlabeled);
+  applyFilterAndRender();
 }
 
 // --- Init ---
