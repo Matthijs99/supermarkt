@@ -335,6 +335,7 @@ function applyFilterAndRender() {
   const statusEl  = document.getElementById('status');
 
   const bestBySm = new Map();
+  let unlabeledHiddenCount = 0;
   for (const row of cachedResults) {
     if (!enabledSupermarkets.has(row.sm.n)) continue;
     if (filterUnit) {
@@ -346,6 +347,7 @@ function applyFilterAndRender() {
     }
     if (!passesSizeFilter(row.size)) continue;
     if (negativeTerms.length > 0 && negativeTerms.some(t => row.product.n.toLowerCase().includes(t))) continue;
+    if (hideUnlabeled && row.size === null) { unlabeledHiddenCount++; continue; }
     const cur = bestBySm.get(row.sm);
     if (!cur
       || (row.unitPrice && (!cur.unitPrice || row.unitPrice.value < cur.unitPrice.value))
@@ -356,11 +358,13 @@ function applyFilterAndRender() {
   const rows = [...bestBySm.values()];
 
   if (rows.length === 0) {
-    const hint = strictMode && cachedResults.length === 0
-      ? 'Geen exacte resultaten. Zet "Exacte match" uit voor meer resultaten.'
-      : cachedResults.length === 0
-        ? 'Geen resultaten gevonden.'
-        : 'Geen resultaten binnen dit formaat.';
+    const hint = unlabeledHiddenCount > 0
+      ? 'Alleen items zonder eenheid. Schakel "Verberg zonder eenheid" uit om ze te tonen.'
+      : strictMode && cachedResults.length === 0
+        ? 'Geen exacte resultaten. Zet "Exacte match" uit voor meer resultaten.'
+        : cachedResults.length === 0
+          ? 'Geen resultaten gevonden.'
+          : 'Geen resultaten binnen dit formaat.';
     statusEl.textContent = hint;
     resultsEl.innerHTML = '';
     return;
