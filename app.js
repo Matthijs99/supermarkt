@@ -103,6 +103,10 @@ function parseSize(s) {
   return null;
 }
 
+function parseProductSize(product) {
+  return parseSize(product.s) ?? parseSize(product.n);
+}
+
 function calcUnitPrice(price, size) {
   if (!size) return null;
   if (size.grams > 0) return { value: price / size.grams * 100, label: '/100g' };
@@ -422,7 +426,7 @@ function search(query) {
     cachedResults = supermarketsData.flatMap(sm => {
       const products = searchSupermarket(sm, positiveQuery);
       return products.map(item => {
-        const size      = parseSize(item.s);
+        const size      = parseProductSize(item);
         const unitPrice = calcUnitPrice(item.p, size);
         return { sm, product: item, size, unitPrice };
       });
