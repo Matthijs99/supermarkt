@@ -16,6 +16,8 @@ let filterMax         = null;
 let negativeTerms     = [];
 let strictMode        = true;
 let currentStrictMode = true;
+let dismissedProducts = new Set();
+let renderedRows      = new Map(); // supermarket.n -> HTMLElement
 
 async function loadData() {
   for (const url of DATA_URLS) {
@@ -403,6 +405,7 @@ function applyFilterAndRender() {
 
   const bestBySm = new Map();
   for (const row of cachedResults) {
+    if (dismissedProducts.has(row.product)) continue;
     if (!enabledSupermarkets.has(row.sm.n)) continue;
     if (filterUnit) {
       const ut = row.size?.grams !== undefined ? 'grams'
@@ -430,6 +433,7 @@ function applyFilterAndRender() {
         : 'Geen resultaten binnen dit formaat.';
     statusEl.textContent = hint;
     resultsEl.innerHTML = '';
+    renderedRows.clear();
     return;
   }
 
@@ -442,29 +446,55 @@ function applyFilterAndRender() {
 
   statusEl.textContent = '';
   const cheapest = rows[0];
+  const newKeys = new Set();
 
-  resultsEl.innerHTML = rows.map(row => {
+  for (const row of rows) {
+    newKeys.add(row.sm.n);
+    let el = renderedRows.get(row.sm.n);
+    let isNew = false;
+    if (!el) {
+      el = document.createElement('div');
+      isNew = true;
+      renderedRows.set(row.sm.n, el);
+    }
     const isCheapest = row === cheapest;
-    const href = (row.sm.u && row.product.l) ? row.sm.u + row.product.l : null;
-    const nameHtml = href
-      ? `<a href="${href}" target="_blank" rel="noopener">${row.product.n}</a>`
-      : row.product.n;
-    const badge    = isCheapest ? `<span class="cheapest-badge">goedkoopst</span>` : '';
-    const unitHtml = row.unitPrice
-      ? `<div class="unit-price">${fmt(row.unitPrice.value)}${row.unitPrice.label}</div>`
-      : '';
+    el.className = 'result-row'
+      + (isCheapest ? ' cheapest' : '')
+      + (isNew ? ' entering' : '');
+    el.innerHTML = buildRowInnerHtml(row, isCheapest);
+    if (isNew) {
+      el.addEventListener('animationend', () => el.classList.remove('entering'), { once: true });
+    }
+    resultsEl.appendChild(el); // moves existing nodes; preserves animation state
+  }
 
-    return `
-      <div class="result-row${isCheapest ? ' cheapest' : ''}">
+  for (const [smName, el] of renderedRows) {
+    if (!newKeys.has(smName)) {
+      el.remove();
+      renderedRows.delete(smName);
+    }
+  }
+}
+
+function buildRowInnerHtml(row, isCheapest) {
+  const href = (row.sm.u && row.product.l) ? row.sm.u + row.product.l : null;
+  const nameHtml = href
+    ? `<a href="${href}" target="_blank" rel="noopener">${row.product.n}</a>`
+    : row.product.n;
+  const badge    = isCheapest ? `<span class="cheapest-badge">goedkoopst</span>` : '';
+  const unitHtml = row.unitPrice
+    ? `<div class="unit-price">${fmt(row.unitPrice.value)}${row.unitPrice.label}</div>`
+    : '';
+
+  return `
+        <button class="dismiss-btn" data-idx="${row._idx}" aria-label="Dit resultaat overslaan" title="Dit resultaat overslaan">×</button>
         <div class="supermarket-name">${row.sm.c || row.sm.n}</div>
         <div class="product-name">${nameHtml}${badge}</div>
         <div class="prices">
           ${unitHtml}
           <div class="price">${fmt(row.product.p)}</div>
           <div class="size">${row.product.s || ''}</div>
-        </div>
-      </div>`;
-  }).join('');
+        </div>`;
 }
 
 function search(query) {
@@ -476,6 +506,7 @@ function search(query) {
 
   if (!positiveQuery) {
     cachedResults = [];
+    dismissedProducts = new Set();
     currentQuery = '';
     currentStrictMode = strictMode;
     filterUnit = null;
@@ -484,11 +515,13 @@ function search(query) {
     document.getElementById('sm-filter-wrap').style.display = 'none';
     document.getElementById('strict-wrap').style.display = 'none';
     resultsEl.innerHTML = '';
+    renderedRows.clear();
     statusEl.textContent = '';
     return;
   }
 
   if (positiveQuery !== currentQuery || strictMode !== currentStrictMode) {
+    if (positiveQuery !== currentQuery) dismissedProducts = new Set();
     currentQuery = positiveQuery;
     currentStrictMode = strictMode;
     cachedResults = supermarketsData.flatMap(sm => {
@@ -499,6 +532,7 @@ function search(query) {
         return { sm, product: item, size, unitPrice };
       });
     });
+    cachedResults.forEach((row, i) => row._idx = i);
 
     const prevUnit = filterUnit;
     const newUnitTypes = getUnitTypes(cachedResults);
@@ -550,6 +584,16 @@ document.getElementById('filter-clear').addEventListener('click', () => {
   filterMin = filterMax = null;
   document.getElementById('min-size').value = '';
   document.getElementById('max-size').value = '';
+  applyFilterAndRender();
+});
+
+document.getElementById('results').addEventListener('click', e => {
+  const btn = e.target.closest('.dismiss-btn');
+  if (!btn) return;
+  const idx = +btn.dataset.idx;
+  const row = cachedResults[idx];
+  if (!row) return;
+  dismissedProducts.add(row.product);
   applyFilterAndRender();
 });
 
