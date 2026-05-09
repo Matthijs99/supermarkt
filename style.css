@@ -392,6 +392,14 @@ h1 {
 }
 
 .cheapest .unit-price { color: #b45309; }
+.unit-price-missing {
+  font-size: .8rem;
+  font-weight: 400;
+  font-style: italic;
+  color: var(--text-soft);
+  letter-spacing: 0;
+}
+.cheapest .unit-price-missing { color: var(--text-soft); }
 
 .price {
   font-size: .72rem;

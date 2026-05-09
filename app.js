@@ -384,7 +384,7 @@ function applyFilterAndRender() {
     const badge    = isCheapest ? `<span class="cheapest-badge">goedkoopst</span>` : '';
     const unitHtml = row.unitPrice
       ? `<div class="unit-price">${fmt(row.unitPrice.value)}${row.unitPrice.label}</div>`
-      : '';
+      : `<div class="unit-price unit-price-missing">geen eenheid</div>`;
 
     return `
       <div class="result-row${isCheapest ? ' cheapest' : ''}">
