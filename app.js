@@ -15,6 +15,7 @@ let filterMin         = null;
 let filterMax         = null;
 let negativeTerms     = [];
 let strictMode        = true;
+let hideUnlabeled     = true;
 let currentStrictMode = true;
 let dismissedProducts = new Set();
 let renderedRows      = new Map(); // supermarket.n -> HTMLElement
@@ -83,7 +84,7 @@ function parseSize(s) {
   }
 
   // "N x M unit" (multipacks)
-  m = str.match(/^(\d+(?:[.,]\d+)?)\s*[xX×]\s*(\d+(?:[.,]\d+)?)\s*(g|kg|mg|ml|cl|dl|l|gram|liter)\b/i);
+  m = str.match(/(\d+(?:[.,]\d+)?)\s*[xX×]\s*(\d+(?:[.,]\d+)?)\s*(g|kg|mg|ml|cl|dl|l|gram|liter)\b/i);
   if (m) {
     const total = parseNum(m[1]) * parseNum(m[2]), u = m[3];
     const g = weightToGrams(total, u);
@@ -103,6 +104,10 @@ function parseSize(s) {
   }
 
   return null;
+}
+
+function parseProductSize(product) {
+  return parseSize(product.s) ?? parseSize(product.n);
 }
 
 function calcUnitPrice(price, size) {
@@ -271,11 +276,6 @@ function buildUnitFilter(unitTypes) {
 
   if (unitTypes.size < 2) { wrap.style.display = 'none'; return; }
 
-  const prefix = document.createElement('span');
-  prefix.className = 'filter-prefix';
-  prefix.textContent = 'Eenheid:';
-  wrap.appendChild(prefix);
-
   const seg = document.createElement('div');
   seg.className = 'segmented';
   seg.setAttribute('role', 'radiogroup');
@@ -404,6 +404,7 @@ function applyFilterAndRender() {
   const statusEl  = document.getElementById('status');
 
   const bestBySm = new Map();
+  let unlabeledHiddenCount = 0;
   for (const row of cachedResults) {
     if (dismissedProducts.has(row.product)) continue;
     if (!enabledSupermarkets.has(row.sm.n)) continue;
@@ -416,6 +417,7 @@ function applyFilterAndRender() {
     }
     if (!passesSizeFilter(row.size)) continue;
     if (negativeTerms.length > 0 && negativeTerms.some(t => row.product.n.toLowerCase().includes(t))) continue;
+    if (hideUnlabeled && row.size === null) { unlabeledHiddenCount++; continue; }
     const cur = bestBySm.get(row.sm);
     if (!cur
       || (row.unitPrice && (!cur.unitPrice || row.unitPrice.value < cur.unitPrice.value))
@@ -426,11 +428,13 @@ function applyFilterAndRender() {
   const rows = [...bestBySm.values()];
 
   if (rows.length === 0) {
-    const hint = strictMode && cachedResults.length === 0
-      ? 'Geen exacte resultaten. Zet "Exacte match" uit voor meer resultaten.'
-      : cachedResults.length === 0
-        ? 'Geen resultaten gevonden.'
-        : 'Geen resultaten binnen dit formaat.';
+    const hint = unlabeledHiddenCount > 0
+      ? 'Alleen items zonder eenheid. Schakel "Verberg zonder eenheid" uit om ze te tonen.'
+      : strictMode && cachedResults.length === 0
+        ? 'Geen exacte resultaten. Zet "Exacte match" uit voor meer resultaten.'
+        : cachedResults.length === 0
+          ? 'Geen resultaten gevonden.'
+          : 'Geen resultaten binnen dit formaat.';
     statusEl.textContent = hint;
     resultsEl.innerHTML = '';
     renderedRows.clear();
@@ -484,7 +488,7 @@ function buildRowInnerHtml(row, isCheapest) {
   const badge    = isCheapest ? `<span class="cheapest-badge">goedkoopst</span>` : '';
   const unitHtml = row.unitPrice
     ? `<div class="unit-price">${fmt(row.unitPrice.value)}${row.unitPrice.label}</div>`
-    : '';
+    : `<div class="unit-price unit-price-missing">geen eenheid</div>`;
 
   return `
         <button class="dismiss-btn" data-idx="${row._idx}" aria-label="Dit resultaat overslaan" title="Dit resultaat overslaan">×</button>
@@ -514,6 +518,7 @@ function search(query) {
     buildUnitFilter(new Set());
     document.getElementById('sm-filter-wrap').style.display = 'none';
     document.getElementById('strict-wrap').style.display = 'none';
+    document.getElementById('hide-unlabeled-wrap').style.display = 'none';
     resultsEl.innerHTML = '';
     renderedRows.clear();
     statusEl.textContent = '';
@@ -527,7 +532,7 @@ function search(query) {
     cachedResults = supermarketsData.flatMap(sm => {
       const products = searchSupermarket(sm, positiveQuery);
       return products.map(item => {
-        const size      = parseSize(item.s);
+        const size      = parseProductSize(item);
         const unitPrice = calcUnitPrice(item.p, size);
         return { sm, product: item, size, unitPrice };
       });
@@ -543,6 +548,7 @@ function search(query) {
     buildUnitFilter(newUnitTypes);
     document.getElementById('sm-filter-wrap').style.display = '';
     document.getElementById('strict-wrap').style.display = '';
+    document.getElementById('hide-unlabeled-wrap').style.display = '';
   }
 
   applyFilterAndRender();
@@ -553,6 +559,13 @@ function toggleStrictMode() {
   document.getElementById('strict-toggle')
           .setAttribute('aria-checked', String(strictMode));
   if (currentQuery) search(searchEl.value);
+}
+
+function toggleHideUnlabeled() {
+  hideUnlabeled = !hideUnlabeled;
+  document.getElementById('hide-unlabeled-toggle')
+          .setAttribute('aria-checked', String(hideUnlabeled));
+  applyFilterAndRender();
 }
 
 // --- Init ---
